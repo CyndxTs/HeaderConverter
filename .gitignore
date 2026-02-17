@@ -14,3 +14,4 @@ nbdist/
 *.cache
 Thumbs.db
 Desktop.ini
+.dep.inc
