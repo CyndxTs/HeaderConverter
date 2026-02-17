@@ -1,0 +1,16 @@
+nbproject/private/
+build/
+dist/
+nbbuild/
+nbdist/
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.dll
+*.log
+*.tmp
+*.cache
+Thumbs.db
+Desktop.ini

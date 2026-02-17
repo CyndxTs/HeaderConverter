@@ -1,0 +1,70 @@
+
+void HeaderConversion(const char *,const char *);
+
+void procesarDeclaracionPorTipo(ifstream &,LDX &,Declaracion &);
+
+void imprimirLista(ofstream &,LDX);
+
+void descartarProximosDatosDeDeclaracion(ifstream &,char);
+
+void insertarOrdenado(LDX &,Declaracion);
+
+void imprimirFuncion(ofstream &,Funcion,bool &);
+
+void imprimirAsignacion(ofstream &,Asignacion,bool &);
+
+bool seInsertaAntesDeNodo(Declaracion,Declaracion);
+
+bool seAjustaPorMargen(ofstream &,int,int,int &);
+
+ifstream abrirArchivo_IFS(const char *);
+
+ofstream abrirArchivo_OFS(const char *);
+
+bool esElemento(char,const char *);
+
+bool esAgrupador(char,int);
+
+bool esLetra(char);
+
+bool esNumero(char);
+
+bool esKeyWord(char *);
+
+bool hayDescarteEspecial(ifstream &,char);
+
+bool hayDescarteDeComentario(ifstream &,char);
+
+char obtenerAgrupadorInverso(char);
+
+void concatenarNuevoElemento(char *,char *,char);
+
+void espaciarOperadorEnCadena(const char *,char *,bool);
+
+void almacenarHastaDelimitador(ifstream &,char *,char,int &);
+
+void descartarHastaDelimitador(ifstream &,char);
+
+void almacenarProximaKeyWord(ifstream &,char *);
+
+void agregarProximosModificadores(ifstream &,char *);
+
+void procesarProximosIdentificadores(ifstream &,Declaracion &);
+
+void procesamientoPorTipoDeLetra(ifstream &,Declaracion &,char *,char,bool,
+                                 int &,bool &,bool &);
+
+void obtenerParametros(ifstream &,Funcion &);
+
+void procesarProximosIdentificadores(ifstream &,Parametro &);
+
+void procesamientoPorTipoDeLetra(ifstream &,Parametro &,char *,char,bool &,
+                                 int &,bool &,bool &,bool &);
+
+void procesarSubOperandos(ifstream &,char *);
+
+void obtenerOperandos(ifstream &,Asignacion &);
+
+void procesarProximosIdentificadores(ifstream &,Operando &);
+
+void darWarning(char,const char *);
