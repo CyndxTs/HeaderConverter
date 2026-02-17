@@ -2,7 +2,7 @@
 **Autor:** CyndxTs o.0?!  
 **Versión:** 2.0
 
-Este programa está principalmente ideado para transcribir directamente archivos `.cpp` hacia archivos `.h`! Además, se supone que también funciona para ordenar un mismo `.h`, nada te impide probar.. Para resumir la utilidad del programa, ya no tendrás que estar copiando función a función cada cabezera para hacer tu header. Además, por si no fuera poco, este programa añade varios controladores para realizar diferentes ajustes adicionales! Por ejemplo, la supresión de variables de los parámetros de las funciones en definición, el ajuste de cabezeras al margen de página, y muchas más!
+Este programa está principalmente ideado para ser un parser de archivos `.cpp` hacia archivos `.h`.. aunque claro, no de una manera tan profesional, pero ahí va mi intento 100% hardcodeado (bromita). Además, como tal también funciona para ordenar un mismo `.h`, nada te impide probar.. Para resumir la utilidad del programa, ya no tendrás que estar copiando función a función cada cabezera para hacer tu header, sino hacer la del ave maría directamente al final del lab! Además, por si no fuera poco, este programa añade varios controladores para realizar diferentes ajustes adicionales! Por ejemplo, la supresión de variables de los parámetros de las funciones en definición, el ajuste de cabezeras al margen de página, y muchas más!
 
 ---
 
