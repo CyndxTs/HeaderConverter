@@ -1,17 +1,24 @@
+# NetBeans
 nbproject/private/
-build/
-dist/
+nbproject/Makefile-*.mk
+nbproject/Package-*.bash
 nbbuild/
 nbdist/
+
+# Build
+build/
+dist/
 *.o
 *.obj
-*.exe
-*.out
 *.a
 *.dll
+
+# Bin
+*.exe
+*.out
+
+# Temp
 *.log
 *.tmp
 *.cache
-Thumbs.db
-Desktop.ini
-.dep.inc
+*.dep.inc
