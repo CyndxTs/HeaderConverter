@@ -736,19 +736,30 @@ bool seInsertaAntesDeNodo(Declaration declaracion, Declaration d_Aux){
     }
     return false;
 }
-//
+
+// =========================
+// 🔹 KEYWORDS
+// =========================
 void cargarListaDePalabrasClave() {
-    ifstream archEntrada = abrirArchivo_IFS("resources/Keywords.csv");
+    ifstream archEntrada = abrirArchivo_IFS("../resources/Keywords.csv");
+
     int cantKw = 0;
     char cadAux[med_KW];
-    while(cantKw < max_KW) {
-        archEntrada>>cadAux;
-        if(archEntrada.eof()) break;
+
+    while (cantKw < max_KW) {
+        archEntrada >> cadAux;
+        if (archEntrada.eof()) break;
+
         strcpy(keywords[cantKw].identificador, cadAux);
         cantKw++;
     }
-    if(!archEntrada.eof()) darWarning('A');
-    if (cantKw < max_KW) keywords[cantKw].identificador[0] = 0;
+
+    if (!archEntrada.eof()) darWarning('A');
+
+    if (cantKw < max_KW)
+        keywords[cantKw].identificador[0] = 0;
+
+    archEntrada.close();
 }
 
 bool existeKW(const char *kw, Keyword *lista, int n) {
@@ -761,9 +772,12 @@ bool existeKW(const char *kw, Keyword *lista, int n) {
 void actualizarListaDePalabrasClave(Keyword *palabrasClave) {
     int numNuevo = 0;
     while (palabrasClave[numNuevo].identificador[0]) numNuevo++;
+
     if (numNuevo == 0) return;
+
     Keyword listaFinal[max_KW];
     int numFinal = 0;
+
     for (int i = 0; i < numNuevo && numFinal < max_KW; i++) {
         if (!existeKW(palabrasClave[i].identificador, listaFinal, numFinal)) {
             strcpy(listaFinal[numFinal].identificador,
@@ -771,28 +785,42 @@ void actualizarListaDePalabrasClave(Keyword *palabrasClave) {
             numFinal++;
         }
     }
-    ofstream archSalida = abrirArchivo_OFS("resources/Keywords.csv");
+
+    ofstream archSalida = abrirArchivo_OFS("../resources/Keywords.csv");
+
     for (int i = 0; i < numFinal; i++) {
         archSalida << listaFinal[i].identificador << endl;
     }
+
     archSalida.close();
 }
-//
+
+// =========================
+// 🔹 OPERADORES
+// =========================
 void cargarListaDeOperadores() {
-    ifstream archEntrada = abrirArchivo_IFS("resources/Operators.csv");
+    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
+
     int posOp = 0;
     char cadAux[med_OP];
-    while(1) {
-        archEntrada.getline(cadAux, med_OP,',');
-        if(archEntrada.eof()) break;
+
+    while (1) {
+        archEntrada.getline(cadAux, med_OP, ',');
+        if (archEntrada.eof()) break;
+
         strcpy(operators[posOp].identificador, cadAux);
-        archEntrada.getline(cadAux, med_OP,',');
-        operators[posOp].esAcotable = ( strcmp(cadAux, "true") == 0);
-        archEntrada>>cadAux;
-        operators[posOp].esSegmentador = ( strcmp(cadAux, "true") == 0);
-        archEntrada>>ws;
+
+        archEntrada.getline(cadAux, med_OP, ',');
+        operators[posOp].esAcotable = (strcmp(cadAux, "true") == 0);
+
+        archEntrada >> cadAux;
+        operators[posOp].esSegmentador = (strcmp(cadAux, "true") == 0);
+
+        archEntrada >> ws;
         posOp++;
     }
+
+    archEntrada.close();
 }
 
 int buscarOperador(const char *id, Operator *ops, int n) {
@@ -807,7 +835,8 @@ void actualizarListaDeOperadores(Operator *operadores) {
     while (operadores[numOps].identificador[0]) numOps++;
 
     if (numOps == 0) return;
-    ifstream archEntrada = abrirArchivo_IFS("resources/Operators.csv");
+
+    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
 
     Operator listaArchivo[max_OP];
     int numArchivo = 0;
@@ -820,23 +849,32 @@ void actualizarListaDeOperadores(Operator *operadores) {
         archEntrada.getline(segmentadorStr, 6);
 
         strcpy(listaArchivo[numArchivo].identificador, id);
-        listaArchivo[numArchivo].esAcotable = (strcmp(acotableStr, "true") == 0);
-        listaArchivo[numArchivo].esSegmentador = (strcmp(segmentadorStr, "true") == 0);
+        listaArchivo[numArchivo].esAcotable =
+            (strcmp(acotableStr, "true") == 0);
+        listaArchivo[numArchivo].esSegmentador =
+            (strcmp(segmentadorStr, "true") == 0);
 
         numArchivo++;
         if (numArchivo >= max_OP) break;
     }
 
     archEntrada.close();
+
+    // 🔹 actualizar valores existentes
     for (int i = 0; i < numArchivo; i++) {
-        int pos = buscarOperador(listaArchivo[i].identificador, operadores, numOps);
+        int pos = buscarOperador(
+            listaArchivo[i].identificador,
+            operadores,
+            numOps
+        );
+
         if (pos != -1) {
             listaArchivo[i].esAcotable = operadores[pos].esAcotable;
             listaArchivo[i].esSegmentador = operadores[pos].esSegmentador;
         }
     }
 
-    ofstream archSalida = abrirArchivo_OFS("resources/Operators.csv");
+    ofstream archSalida = abrirArchivo_OFS("../resources/Operators.csv");
 
     for (int i = 0; i < numArchivo; i++) {
         archSalida << listaArchivo[i].identificador << ","
@@ -848,8 +886,11 @@ void actualizarListaDeOperadores(Operator *operadores) {
     archSalida.close();
 }
 
+// =========================
+// 🔹 FORMATO DE PROCESAMIENTO
+// =========================
 void actualizarFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento) {
-    ofstream arch = abrirArchivo_OFS("resources/ProcessingFormat.csv");
+    ofstream arch = abrirArchivo_OFS("../resources/ProcessingFormat.csv");
 
     arch << "adjustMargin," << (formatoDeProcesamiento.ajustarPorMargen ? "true" : "false") << endl;
     arch << "marginLimit," << formatoDeProcesamiento.limitePorMargen << endl;
@@ -863,19 +904,20 @@ void actualizarFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento) {
 
     arch.close();
 }
+
 void cargarFormatoDeProcesamiento() {
+    // 🔹 valores por defecto
     pf.ajustarPorMargen = true;
     pf.limitePorMargen = 80;
     pf.ordenarDeclaraciones = true;
-    strcpy(pf.criteriosDeOrdenamiento, "ADA");
+    strcpy(pf.criteriosDeOrdenamiento, "AAA");
     pf.espaciarSubelementos = true;
     pf.procesarAsignaciones = true;
     pf.procesarFunciones = true;
     pf.suprimirVariables = false;
     pf.simboloDelimitador = ';';
 
-    // 2. Intentar leer archivo
-    ifstream arch = abrirArchivo_IFS("resources/ProcessingFormat.csv");
+    ifstream arch = abrirArchivo_IFS("../resources/ProcessingFormat.csv");
 
     char atributo[50], valor[50];
 

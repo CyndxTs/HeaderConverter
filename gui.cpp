@@ -11,7 +11,6 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QFrame>
-#include <QTextCursor>
 #include <QMessageBox>
 #include <QClipboard>
 #include <QApplication>
@@ -58,7 +57,7 @@ void initGUI() {
     layoutMargen->addStretch();
     layoutMargen->addWidget(btnInfoMargen);
 
-    auto *inputMargen = new QLineEdit("80");
+    auto *inputMargen = new QLineEdit();
     inputMargen->setVisible(false);
 
     QObject::connect(chkMargen, &QCheckBox::toggled,
@@ -109,7 +108,7 @@ void initGUI() {
         "Adds spaces after separators except last.");
     });
 
-    // Process assignments
+    // Assignments
     auto *layoutAsig = new QHBoxLayout();
     auto *chkAsignaciones = new QCheckBox("Process assignments");
     auto *btnInfoAsig = new QPushButton("ℹ");
@@ -123,7 +122,7 @@ void initGUI() {
         "Processes global assignments.");
     });
 
-    // Process functions
+    // Functions
     auto *layoutFunc = new QHBoxLayout();
     auto *chkFunciones = new QCheckBox("Process functions");
     auto *btnInfoFunc = new QPushButton("ℹ");
@@ -182,7 +181,7 @@ void initGUI() {
 
     // cargar input
     {
-        ifstream src = abrirArchivo_IFS("resources/CodeSource.txt");
+        ifstream src = abrirArchivo_IFS("../resources/CodeSource.txt");
         string contenido((istreambuf_iterator<char>(src)), istreambuf_iterator<char>());
         textoEntrada->setText(QString::fromStdString(contenido));
         src.close();
@@ -204,18 +203,41 @@ void initGUI() {
 
     // cargar output
     {
-        ifstream res = abrirArchivo_IFS("resources/HeaderConversion.txt");
+        ifstream res = abrirArchivo_IFS("../resources/HeaderConversion.txt");
         string contenido((istreambuf_iterator<char>(res)), istreambuf_iterator<char>());
         textoSalida->setText(QString::fromStdString(contenido));
         res.close();
     }
 
     // =========================
+    // 🔹 CARGAR PF AL INICIO
+    // =========================
+    cargarFormatoDeProcesamiento();
+
+    chkMargen->setChecked(pf.ajustarPorMargen);
+    inputMargen->setText(QString::number(pf.limitePorMargen));
+    inputMargen->setVisible(pf.ajustarPorMargen);
+
+    chkOrdenar->setChecked(pf.ordenarDeclaraciones);
+    comboCriterios->setCurrentText(pf.criteriosDeOrdenamiento);
+    comboCriterios->setVisible(pf.ordenarDeclaraciones);
+
+    chkEspaciar->setChecked(pf.espaciarSubelementos);
+    chkAsignaciones->setChecked(pf.procesarAsignaciones);
+
+    chkFunciones->setChecked(pf.procesarFunciones);
+    chkSuprimir->setChecked(pf.suprimirVariables);
+    comboDelimitador->setCurrentText(QString(pf.simboloDelimitador));
+
+    chkSuprimir->setVisible(pf.procesarFunciones);
+    comboDelimitador->setVisible(pf.procesarFunciones);
+
+    // =========================
     // 🔹 BOTÓN CONVERTIR
     // =========================
     QObject::connect(botonConvertir, &QPushButton::clicked, [=]() {
 
-        ofstream src = abrirArchivo_OFS("resources/CodeSource.txt");
+        ofstream src = abrirArchivo_OFS("../resources/CodeSource.txt");
         src << textoEntrada->toPlainText().toStdString();
         src.close();
 
@@ -238,18 +260,22 @@ void initGUI() {
         cargarListaDePalabrasClave();
         cargarListaDeOperadores();
 
-        ofstream clean = abrirArchivo_OFS("resources/HeaderConversion.txt");
+        // 🔥 LIMPIEZA REAL
+        ofstream clean = abrirArchivo_OFS("../resources/HeaderConversion.txt");
         clean.close();
 
-        ifstream in = abrirArchivo_IFS("resources/CodeSource.txt");
-        ofstream out = abrirArchivo_OFS("resources/HeaderConversion.txt");
+        ifstream in = abrirArchivo_IFS("../resources/CodeSource.txt");
+        ofstream out = abrirArchivo_OFS("../resources/HeaderConversion.txt");
 
         HeaderConversion(in, out);
 
         in.close();
         out.close();
 
-        ifstream res = abrirArchivo_IFS("resources/HeaderConversion.txt");
+        // 🔥 LIMPIAR UI antes de cargar
+        textoSalida->clear();
+
+        ifstream res = abrirArchivo_IFS("../resources/HeaderConversion.txt");
         string contenido((istreambuf_iterator<char>(res)), istreambuf_iterator<char>());
         textoSalida->setText(QString::fromStdString(contenido));
         res.close();
@@ -262,24 +288,6 @@ void initGUI() {
     layoutDerecho->addWidget(grupoInput);
     layoutDerecho->addWidget(barra);
     layoutDerecho->addWidget(grupoOutput);
-
-    // defaults
-    chkMargen->setChecked(true);
-    inputMargen->setVisible(true);
-
-    chkOrdenar->setChecked(true);
-    comboCriterios->setCurrentText("AAA");
-    comboCriterios->setVisible(true);
-
-    chkEspaciar->setChecked(true);
-    chkAsignaciones->setChecked(true);
-
-    chkFunciones->setChecked(true);
-    chkSuprimir->setChecked(false);
-    comboDelimitador->setCurrentText(";");
-
-    chkSuprimir->setVisible(true);
-    comboDelimitador->setVisible(true);
 
     layoutPrincipal->addLayout(layoutIzquierdo, 1);
     layoutPrincipal->addLayout(layoutDerecho, 3);

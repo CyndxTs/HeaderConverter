@@ -15,21 +15,10 @@ const char modificadores[] = {'&', '*', 0};
 
 const char separadores[] = {',', ')', '}', ';', 0};
 
-Keyword keywords[max_KW] = {{"void"}, {"char"}, {"double"}, {"int"}, {"bool"},
-                            {"const"}, {"struct"}, {"operator"}, {"private"},
-                            {"public"}, {"ifstream"}, {"ofstream"},
-                            {"fstream"}, {"istream"}, {"ostream"}};
+Keyword keywords[max_KW] {};
 
-Operator operators[max_OP] = {{"+", true, true}, {"-", true, true},
-                              {"*", true, false}, {"/", true, false},
-                              {":", true, false}, {">", true, true},
-                              {"<", true, true}, {">=", true, true},
-                              {"<=", true, true}, {"==", true, true},
-                              {"!=", true, true}, {"!", true, false},
-                              {"||", true, true}, {"&&", true, true},
-                              {"or", false, true}, {"and", false, true},
-                              {"xor", false, true}};
+Operator operators[max_OP] {};
 
 LDX ldx {};
 
-ProcessingFormat pf {true, 80, true, "ADA", true, true, true, false, ';'};
+ProcessingFormat pf {};

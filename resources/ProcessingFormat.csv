@@ -1,9 +1,9 @@
-adjustMargin,false
+adjustMargin,true
 marginLimit,80
 sortDeclarations,true
-sortingCriteria,DDA
+sortingCriteria,ADA
 spaceSubelements,true
-processAssignments,false
+processAssignments,true
 processFunctions,true
-suppressVariables,false
+suppressVariables,true
 delimiterSymbol,;
