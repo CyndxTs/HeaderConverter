@@ -1,10 +1,11 @@
+
 /*/
  * Projecto:            HeaderConverter
- * Nombre del Archivo:  declaraciones.cpp
- * Autor:               CyndxTs o.0?!
+ * Nombre del Archivo:  declarations.cpp
+ * Autor:               CyndxTs
 /*/
 
-#include "declaraciones.h"
+#include "declarations.h"
 
 const char *agrupadores[] = {"\"\"", "''", "()", "[]", "{}", 0};
 

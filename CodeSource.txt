@@ -1,9 +1,0 @@
-
-int hola(int ab = 1){}
-
-int hola(int ab = 1, bool &
-ab = abc['a'][abd(12)]){}
-
-const int  * numVida[18][queso] = dameAlgoRaro('a'*12+2.5-abc,
-                                        arr[12+';' 
-                                             ]) or 12-1;

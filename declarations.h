@@ -1,11 +1,12 @@
+
 /*/
  * Projecto:            HeaderConverter
- * Nombre del Archivo:  declaraciones.h
- * Autor:               CyndxTs o.0?!
+ * Nombre del Archivo:  declarations.h
+ * Autor:               CyndxTs
 /*/
 
-#ifndef DECLARACIONES_H
-#define DECLARACIONES_H
+#ifndef HEADERCONVERTER_DECLARATIONS_H
+#define HEADERCONVERTER_DECLARATIONS_H
 
 // Declaracion de constantes
 const int med_IO = 10000;               // Medida máxima de entrada y salida.
@@ -96,4 +97,4 @@ extern Operator operators[max_OP];
 extern LDX ldx;
 extern ProcessingFormat pf;
 
-#endif /* DECLARACIONES_H */
+#endif //HEADERCONVERTER_DECLARATIONS_H

@@ -2,12 +2,14 @@
 /*/
  * Projecto:            HeaderConverter
  * Nombre del Archivo:  converter.h
- * Autor:               CyndxTs o.0?!
+ * Autor:               CyndxTs
 /*/
 
-#ifndef CONVERTER_H
-#define CONVERTER_H
-#include "declaraciones.h"
+#ifndef HEADERCONVERTER_CONVERTER_H
+#define HEADERCONVERTER_CONVERTER_H
+#include "declarations.h"
+#include <fstream>
+using namespace std;
 
 void HeaderConversion(ifstream &archOrigen,
                       ofstream &archDestino);
@@ -113,4 +115,20 @@ void insertarDeclaracionEnLista(Declaration declaracion);
 bool seInsertaAntesDeNodo(Declaration declaracion,
                           Declaration d_Aux);
 
-#endif /* CONVERTER_H */
+void cargarListaDePalabrasClave();
+
+bool existeKW(const char *kw, Keyword *lista, int n);
+
+void actualizarListaDePalabrasClave(Keyword *palabrasClave);
+
+void cargarListaDeOperadores();
+
+int buscarOperador(const char *id, Operator *ops, int n);
+
+void actualizarListaDeOperadores(Operator *operadores);
+
+void actualizarFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento);
+
+void cargarFormatoDeProcesamiento();
+
+#endif //HEADERCONVERTER_CONVERTER_H

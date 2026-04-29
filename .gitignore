@@ -1,9 +1,13 @@
-# NetBeans
-nbproject/private/
-nbproject/Makefile-*.mk
-nbproject/Package-*.bash
-nbbuild/
-nbdist/
+# CLion
+.idea/
+*.iml
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+
+# CMake
+cmake_install.cmake
+Makefile
 
 # Build
 build/
@@ -12,6 +16,8 @@ dist/
 *.obj
 *.a
 *.dll
+*.so
+*.lib
 
 # Bin
 *.exe
@@ -22,3 +28,7 @@ dist/
 *.tmp
 *.cache
 *.dep.inc
+
+# System
+Thumbs.db
+.DS_Store

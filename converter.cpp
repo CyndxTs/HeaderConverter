@@ -2,7 +2,7 @@
 /*/
  * Projecto:            HeaderConverter
  * Nombre del Archivo:  converter.cpp
- * Autor:               CyndxTs o.0?!
+ * Autor:               CyndxTs
 /*/
 
 #include <iomanip>
@@ -33,6 +33,8 @@ void HeaderConversion(ifstream &archOrigen, ofstream &archDestino){
     }
     // Impresion de lista de declaraciones
     imprimirListaDeDeclaraciones(archDestino);
+    // Limpiar lista de declaraciones
+    limpiarListaDeDeclaraciones();
 }
 
                       /* - / Funciones Principales / - */
@@ -92,7 +94,7 @@ void procesarProximosIdentificadores(ifstream &archOrigen, char *palabraClave, c
                     if(strcmp(cadAux, "operator") == 0) sobrecargaDeOp = true;
                     posCad = 0;
                 } else particion = true;
-            } 
+            }
             posCad--;
         } else {
             if(letra == '('){
@@ -223,7 +225,7 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro)
                     concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
                     posCad = 0;
                 } else particion = true;
-            } 
+            }
             posCad--;
         } else{
             if(esElemento(letra, separadores)) {
@@ -337,7 +339,7 @@ ifstream abrirArchivo_IFS(const char *nombArch){
 }
 // Modulo de apertura de archivos 'ofstream'
 ofstream abrirArchivo_OFS(const char *nombArch){
-    ofstream archOFS(nombArch, ios::out);
+    ofstream archOFS(nombArch, ios::out | ios::trunc);
     return archOFS;
 }
 // Modulo de validacion de simbolo como 'Letra'
@@ -480,7 +482,8 @@ void almacenarProximosModificadores(ifstream &archOrigen, char *cadena){
             cadena[i] = 0;
             archOrigen.unget();
             break;
-        } else if (i == medida) cadena[i++] = ' ';
+        }
+        if (i == medida) cadena[i++] = ' ';
         cadena[i] = letra;
     }
 }
@@ -670,7 +673,8 @@ bool seAjustaPorMargen(ofstream &archSalida,int posApertura,int posConjunta,
         archSalida<<endl<<setw(posApertura)<<' ';
         posColumna = posApertura + posConjunta;
         return true;
-    } else posColumna += posConjunta;
+    }
+    posColumna += posConjunta;
     return false;
 }
 // Modulo de Insercion Ordenada de Declaration en Lista Simplemente Enlazada
@@ -731,4 +735,181 @@ bool seInsertaAntesDeNodo(Declaration declaracion, Declaration d_Aux){
         }
     }
     return false;
+}
+//
+void cargarListaDePalabrasClave() {
+    ifstream archEntrada = abrirArchivo_IFS("resources/Keywords.csv");
+    int cantKw = 0;
+    char cadAux[med_KW];
+    while(cantKw < max_KW) {
+        archEntrada>>cadAux;
+        if(archEntrada.eof()) break;
+        strcpy(keywords[cantKw].identificador, cadAux);
+        cantKw++;
+    }
+    if(!archEntrada.eof()) darWarning('A');
+    if (cantKw < max_KW) keywords[cantKw].identificador[0] = 0;
+}
+
+bool existeKW(const char *kw, Keyword *lista, int n) {
+    for (int i = 0; i < n; i++) {
+        if (strcmp(kw, lista[i].identificador) == 0) return true;
+    }
+    return false;
+}
+
+void actualizarListaDePalabrasClave(Keyword *palabrasClave) {
+    int numNuevo = 0;
+    while (palabrasClave[numNuevo].identificador[0]) numNuevo++;
+    if (numNuevo == 0) return;
+    Keyword listaFinal[max_KW];
+    int numFinal = 0;
+    for (int i = 0; i < numNuevo && numFinal < max_KW; i++) {
+        if (!existeKW(palabrasClave[i].identificador, listaFinal, numFinal)) {
+            strcpy(listaFinal[numFinal].identificador,
+                   palabrasClave[i].identificador);
+            numFinal++;
+        }
+    }
+    ofstream archSalida = abrirArchivo_OFS("resources/Keywords.csv");
+    for (int i = 0; i < numFinal; i++) {
+        archSalida << listaFinal[i].identificador << endl;
+    }
+    archSalida.close();
+}
+//
+void cargarListaDeOperadores() {
+    ifstream archEntrada = abrirArchivo_IFS("resources/Operators.csv");
+    int posOp = 0;
+    char cadAux[med_OP];
+    while(1) {
+        archEntrada.getline(cadAux, med_OP,',');
+        if(archEntrada.eof()) break;
+        strcpy(operators[posOp].identificador, cadAux);
+        archEntrada.getline(cadAux, med_OP,',');
+        operators[posOp].esAcotable = ( strcmp(cadAux, "true") == 0);
+        archEntrada>>cadAux;
+        operators[posOp].esSegmentador = ( strcmp(cadAux, "true") == 0);
+        archEntrada>>ws;
+        posOp++;
+    }
+}
+
+int buscarOperador(const char *id, Operator *ops, int n) {
+    for (int i = 0; i < n; i++) {
+        if (strcmp(id, ops[i].identificador) == 0) return i;
+    }
+    return -1;
+}
+
+void actualizarListaDeOperadores(Operator *operadores) {
+    int numOps = 0;
+    while (operadores[numOps].identificador[0]) numOps++;
+
+    if (numOps == 0) return;
+    ifstream archEntrada = abrirArchivo_IFS("resources/Operators.csv");
+
+    Operator listaArchivo[max_OP];
+    int numArchivo = 0;
+
+    char id[med_OP];
+    char acotableStr[6], segmentadorStr[6];
+
+    while (archEntrada.getline(id, med_OP, ',')) {
+        archEntrada.getline(acotableStr, 6, ',');
+        archEntrada.getline(segmentadorStr, 6);
+
+        strcpy(listaArchivo[numArchivo].identificador, id);
+        listaArchivo[numArchivo].esAcotable = (strcmp(acotableStr, "true") == 0);
+        listaArchivo[numArchivo].esSegmentador = (strcmp(segmentadorStr, "true") == 0);
+
+        numArchivo++;
+        if (numArchivo >= max_OP) break;
+    }
+
+    archEntrada.close();
+    for (int i = 0; i < numArchivo; i++) {
+        int pos = buscarOperador(listaArchivo[i].identificador, operadores, numOps);
+        if (pos != -1) {
+            listaArchivo[i].esAcotable = operadores[pos].esAcotable;
+            listaArchivo[i].esSegmentador = operadores[pos].esSegmentador;
+        }
+    }
+
+    ofstream archSalida = abrirArchivo_OFS("resources/Operators.csv");
+
+    for (int i = 0; i < numArchivo; i++) {
+        archSalida << listaArchivo[i].identificador << ","
+                   << (listaArchivo[i].esAcotable ? "true" : "false") << ","
+                   << (listaArchivo[i].esSegmentador ? "true" : "false")
+                   << endl;
+    }
+
+    archSalida.close();
+}
+
+void actualizarFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento) {
+    ofstream arch = abrirArchivo_OFS("resources/ProcessingFormat.csv");
+
+    arch << "adjustMargin," << (formatoDeProcesamiento.ajustarPorMargen ? "true" : "false") << endl;
+    arch << "marginLimit," << formatoDeProcesamiento.limitePorMargen << endl;
+    arch << "sortDeclarations," << (formatoDeProcesamiento.ordenarDeclaraciones ? "true" : "false") << endl;
+    arch << "sortingCriteria," << formatoDeProcesamiento.criteriosDeOrdenamiento << endl;
+    arch << "spaceSubelements," << (formatoDeProcesamiento.espaciarSubelementos ? "true" : "false") << endl;
+    arch << "processAssignments," << (formatoDeProcesamiento.procesarAsignaciones ? "true" : "false") << endl;
+    arch << "processFunctions," << (formatoDeProcesamiento.procesarFunciones ? "true" : "false") << endl;
+    arch << "suppressVariables," << (formatoDeProcesamiento.suprimirVariables ? "true" : "false") << endl;
+    arch << "delimiterSymbol," << formatoDeProcesamiento.simboloDelimitador << endl;
+
+    arch.close();
+}
+void cargarFormatoDeProcesamiento() {
+    pf.ajustarPorMargen = true;
+    pf.limitePorMargen = 80;
+    pf.ordenarDeclaraciones = true;
+    strcpy(pf.criteriosDeOrdenamiento, "ADA");
+    pf.espaciarSubelementos = true;
+    pf.procesarAsignaciones = true;
+    pf.procesarFunciones = true;
+    pf.suprimirVariables = false;
+    pf.simboloDelimitador = ';';
+
+    // 2. Intentar leer archivo
+    ifstream arch = abrirArchivo_IFS("resources/ProcessingFormat.csv");
+
+    char atributo[50], valor[50];
+
+    while (arch.getline(atributo, 50, ',')) {
+        arch.getline(valor, 50);
+
+        if (strcmp(atributo, "adjustMargin") == 0) {
+            pf.ajustarPorMargen = (strcmp(valor, "true") == 0);
+        }
+        else if (strcmp(atributo, "marginLimit") == 0) {
+            pf.limitePorMargen = atoi(valor);
+        }
+        else if (strcmp(atributo, "sortDeclarations") == 0) {
+            pf.ordenarDeclaraciones = (strcmp(valor, "true") == 0);
+        }
+        else if (strcmp(atributo, "sortingCriteria") == 0) {
+            strcpy(pf.criteriosDeOrdenamiento, valor);
+        }
+        else if (strcmp(atributo, "spaceSubelements") == 0) {
+            pf.espaciarSubelementos = (strcmp(valor, "true") == 0);
+        }
+        else if (strcmp(atributo, "processAssignments") == 0) {
+            pf.procesarAsignaciones = (strcmp(valor, "true") == 0);
+        }
+        else if (strcmp(atributo, "processFunctions") == 0) {
+            pf.procesarFunciones = (strcmp(valor, "true") == 0);
+        }
+        else if (strcmp(atributo, "suppressVariables") == 0) {
+            pf.suprimirVariables = (strcmp(valor, "true") == 0);
+        }
+        else if (strcmp(atributo, "delimiterSymbol") == 0) {
+            pf.simboloDelimitador = valor[0];
+        }
+    }
+
+    arch.close();
 }
