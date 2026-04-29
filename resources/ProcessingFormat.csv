@@ -1,0 +1,9 @@
+adjustMargin,false
+marginLimit,80
+sortDeclarations,true
+sortingCriteria,DDA
+spaceSubelements,true
+processAssignments,false
+processFunctions,true
+suppressVariables,false
+delimiterSymbol,;

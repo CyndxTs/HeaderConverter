@@ -1,0 +1,6 @@
+
+void funcioname(int abc, const char *&quesocrema['a'+12], int queso, char booleanoqueso, const bool ****&terrible[abc(ahsd+5)][12][73]);
+
+int hola(int ab);
+
+int hola(int ab, bool &ab);
