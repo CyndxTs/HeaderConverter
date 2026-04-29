@@ -240,15 +240,9 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro)
                 }
                 break;
             } else if(letra == '='){
-                if(esPalabraClave(cadAux)){
-                    concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
-                    cadAux[0] = 0;
-                } else {
-                    if(pf.suprimirVariables) cadAux[0] = 0;
-                    strcat(parametro.identificador, cadAux);
-                }
                 descartarHastaDelimitador(archOrigen, ',');
-                break;
+                archOrigen.unget();
+                posCad--;
             } else if(esElemento(letra, modificadores)){
                 if(esPalabraClave(cadAux)) concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
                 else if(posCad > 0) darWarning('P',"'Parameter' de 'Funcion'");
@@ -433,7 +427,7 @@ void descartarHastaDelimitador(ifstream &archOrigen, char delimitador){
     char letra = 0;
     while (1) {
         letra = archOrigen.get();
-        if (letra == delimitador) break;
+        if (letra == delimitador or (esElemento(letra, separadores) and !esElemento(delimitador, 1, agrupadores))) break;
         if ((delimitador != 39 and delimitador != '"') and (esElemento(letra, 0, agrupadores) and letra != archOrigen.get())){
             archOrigen.unget();
             letra = obtenerAgrupadorInverso(letra);
@@ -455,9 +449,14 @@ void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimita
                     cadena[posCad++] = letra;
                     if (letra != delimitador) existeLetra = true;
                 }
-                if ((delimitador != 39 and delimitador != '"') and (esElemento(letra, 0, agrupadores) and letra != archOrigen.get())){
-                    archOrigen.unget();
-                    almacenarHastaDelimitador(archOrigen, cadena, obtenerAgrupadorInverso(letra), posCad);
+                if(delimitador != 39 and delimitador != '"') {
+                    if(delimitador == ')' and letra == ',' and pf.espaciarSubelementos) {
+                        cadena[posCad++] = ' ';
+                    }
+                    if (esElemento(letra, 0, agrupadores) and letra != archOrigen.get()){
+                        archOrigen.unget();
+                        almacenarHastaDelimitador(archOrigen, cadena, obtenerAgrupadorInverso(letra), posCad);
+                    }
                 }
             }
             if(letra == delimitador){

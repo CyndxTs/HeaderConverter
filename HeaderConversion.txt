@@ -1,4 +1,7 @@
 
-int hola['a'][12+5] = 1 + abc[ab(123,'a')] + abc[ab(123,'a')] +
-                      abc[ab(123,'a')] - abc[ab(123,'a')] or
-                      orabc[ab(123,'a')] + 1 or 1;
+const int *numVida[18][queso] = dameAlgoRaro('a'*12+2.5-abc, arr[12+';']) or
+                                12 - 1;
+
+int hola(int ab);
+
+int hola(int ab, bool &ab);

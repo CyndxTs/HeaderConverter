@@ -31,4 +31,4 @@ Operator operators[max_OP] = {{"+", true, true}, {"-", true, true},
 
 LDX ldx {};
 
-ProcessingFormat pf {true, 80, true, "ADA", true, true, true, true, ';'};
+ProcessingFormat pf {true, 80, true, "ADA", true, true, true, false, ';'};
