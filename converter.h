@@ -9,120 +9,108 @@
 #define CONVERTER_H
 #include "declaraciones.h"
 
-                        /* Controladores Del Programa */
+void HeaderConversion(ifstream &archOrigen,
+                      ofstream &archDestino);
 
-// Controladores Generales
-const bool ajustarPorMargen = true;                                             // [#] Cuando se activa, las declaraciones no sobrepasarán el margen de página designado.
-    const int limitePorMargen = 80;                                             // [|] Cantidad de caracteres hasta el margen de pagina.[Usualmente el predeterminado es 80]
-const bool ordenarDeclaraciones = true;                                         // [#] Cuando se activa, las declaraciones serán ordenadas de acuerdo a los criterios de ordenamiento designados.
-    const char criteriosDeOrdenamiento[4] = "ACC";                              // [|] Criterios de ordenamiento designados.[Criterios de Ordenamiento: "{Tipo De Declaracion}{KeyWord}{Identificador}"][Tipo de Ordenamiento: {'A'scendente}{'C'onsecuente}{'D'escendente}]
-// Controladores de Asignaciones [Variables Globales]
-const bool procesarAsignaciones = true;                                         // [#] Cuando se activa, el programa procesará las asignaciones. [Variables globales]
-// Controladores de Funciones
-const bool procesarFunciones = true;                                            // [#] Cuando se activa, el programa procesará las funciones.
-    const bool suprimirVariables = true;                                        // [|] Cuando se activa, no se mostrarán los identificadores de las variables de los parametros de las funciones en definicion.
-    const char simboloDelimitador = ';';                                        // [|] Simbolo delimitador en la 'Impresion' de funciones. Por ejemplo, puede cambiarlo a '{' en caso quiera ajustar las cabezeras del cpp.)
+void almacenarProximaPalabraClave(ifstream &archOrigen,
+                                  char *palabraClave);
 
-                        /* Declaracion de Constantes */
+void procesarProximosIdentificadores(ifstream &archOrigen,
+                                     char *palabraClave,
+                                     char *identificador,
+                                     char &tipoDeclaracion);
 
-// Definición de Diccionario de KeyWords.[Puede agregar una nueva en caso genere un TAD nuevo.{Formato: '{"<Nombre de KeyWord>"}'}]
-const KeyWord keyWords[num_KW] = {{"void"},{"char"},{"double"},{"int"},
-                                  {"bool"},{"const"},{"struct"},{"operator"},
-                                  {"private"},{"public"},{"ifstream"},
-                                  {"ofstream"},{"fstream"},{"ostream"},
-                                  {"istream"},{"LDX"},{"Nodo"},{"Declaracion"},
-                                  {"Asignacion"},{"Funcion"},{"Parametro"},
-                                  {"Operando"},{"KeyWord"},{"Operador"},
-                                  {"SubElemento"},{"Cliente"},{"Producto"},
-                                  {"Pedido"},{"Curso"},{"Alumno"},{"Libro"},
-                                  {0}};
+void procesarSubElementosDeDeclaracion(ifstream &archOrigen,
+                                       Declaration &declaracion);
 
-// Definición de Diccionario de Operadores.[Puede agregar uno nuevo en caso lo considere necesario.{Formato: '{"<Simbolo de Operador>",<[T/F]:¿Se le puede acotar por letras?>,<[T/F]:¿Debe segmentar operandos?>}'}]
-const Operador operators[num_OP] = {{"+",true,true},{"-",true,true},
-                                    {"*",true,false},{"/",true,false},
-                                    {":",true,false},{">",true,true},
-                                    {"<",true,true},{">=",true,true},
-                                    {"<=",true,true},{"==",true,true},
-                                    {"!=",true,true},{"!",true,false},
-                                    {"||",true,true},{"&&",true,true},
-                                    {"or",false,true},{"and",false,true},
-                                    {"xor",false,true},{0}};
+                     /* - / Funciones Secundarias / - */
 
-// Definicion de Conjuntos Predefinidos.[Se recomienda, no editarlos..]
-const char agrupadores[10][3] = {{'"','"',0},{39,39,0},{'(',')',0},{'[',']',0},
-                                 {'{','}',0},{0}};
-const char espaciadores[10] = {'\t','\n',' ',0};
-const char modificadores[10] = {'&','*',0};
-const char separadores[10] = {'\n',' ',',',';',0};
+void almacenarParametrosDeFuncion(ifstream &archOrigen,
+                                  Function &funcion);
 
-                         /* Declaracion de Funciones */
+void almacenarOperandosDeAsignacion(ifstream &archOrigen,
+                                    Assignment &asignacion);
 
-void HeaderConversion(const char *,const char *);
+                     /* - / Funciones Derivadas / - */
 
-void procesarDeclaracionPorTipo(ifstream &,LDX &,Declaracion &);
+void procesarProximosIdentificadores(ifstream &archOrigen,
+                                     Parameter &parametro);
 
-void imprimirLista(ofstream &,LDX);
+void procesarProximosIdentificadores(ifstream &archOrigen,
+                                     Operand &operando);
 
-void descartarProximosDatosDeDeclaracion(ifstream &,char);
+                     /* - / Funciones Auxiliares / - */
 
-void insertarOrdenado(LDX &,Declaracion);
+ifstream abrirArchivo_IFS(const char *nombArch);
 
-void imprimirFuncion(ofstream &,Funcion,bool &);
+ofstream abrirArchivo_OFS(const char *nombArch);
 
-void imprimirAsignacion(ofstream &,Asignacion,bool &);
+bool esLetra(char simbolo);
 
-bool seInsertaAntesDeNodo(Declaracion,Declaracion);
+bool esNumero(char simbolo);
 
-bool seAjustaPorMargen(ofstream &,int,int,int &);
+bool esPalabraClave(char *cadena);
 
-ifstream abrirArchivo_IFS(const char *);
+bool esElemento(char simbolo,
+                const char *conjunto);
 
-ofstream abrirArchivo_OFS(const char *);
+bool esElemento(char simbolo,
+                int j,
+                const char **conjunto);
 
-bool esElemento(char,const char *);
+bool hayDescarteEspecial(ifstream &archOrigen,
+                         char letra);
 
-bool esAgrupador(char,int);
+bool hayDescarteDeComentario(ifstream &archOrigen,
+                             char letra);
 
-bool esLetra(char);
+char obtenerAgrupadorInverso(char simbolo);
 
-bool esKeyWord(char *);
+char *obtenerDinamicoExacto(const char *cadena);
 
-bool hayDescarteEspecial(ifstream &,char);
+void concatenarPorTipoDeElemento(char *cadDestino,
+                                 char *cadOrigen,
+                                 char tipo);
 
-bool hayDescarteDeComentario(ifstream &,char);
+void descartarProximosDatosDeDeclaracion(ifstream &archOrigen,
+                                         char tipo);
 
-char obtenerAgrupadorInverso(char);
+void descartarHastaDelimitador(ifstream &archOrigen,
+                               char delimitador);
 
-void espaciarOperadorEnCadena(const char *,char *,bool);
+void almacenarHastaDelimitador(ifstream &archOrigen,
+                               char *cadena,
+                               char delimitador,
+                               int &posCad);
 
-void almacenarHastaDelimitador(ifstream &,char *,char,int &);
+void almacenarProximosModificadores(ifstream &archOrigen,
+                                    char *cadena);
 
-void descartarHastaDelimitador(ifstream &,char);
+void espaciarOperadorEnCadena(const char *op,
+                              char *cad,
+                              bool espaciarAlFinal);
 
-void almacenarProximaKeyWord(ifstream &,char *);
+void darWarning(char warningID,
+                const char *reason);
 
-void concatenarNuevoElemento(char *,char *,char);
+void limpiarListaDeDeclaraciones();
 
-void agregarProximosModificadores(ifstream &,char *);
+void imprimirListaDeDeclaraciones(ofstream &archSalida);
 
-void procesarProximosIdentificadores(ifstream &,Declaracion &);
+void imprimirFuncion(ofstream &archSalida,
+                     Function funcion, int);
 
-void procesamientoPorTipoDeLetra(ifstream &,Declaracion &,char *,char,bool,
-                                 int &,bool &,bool &);
+void imprimirAsignacion(ofstream &archSalida,
+                        Assignment asignacion, int);
 
-void obtenerParametros(ifstream &,Funcion &);
+bool seAjustaPorMargen(ofstream &archSalida,
+                       int posApertura,
+                       int posConjunta,
+                       int &posColumna);
 
-void procesarProximosIdentificadores(ifstream &,Parametro &);
+void insertarDeclaracionEnLista(Declaration declaracion);
 
-void procesamientoPorTipoDeLetra(ifstream &,Parametro &,char *,char,bool &,
-                                 int &,bool &,bool &,bool &);
-
-void procesarSubOperandos(ifstream &,char *);
-
-void obtenerOperandos(ifstream &,Asignacion &);
-
-void procesarProximosIdentificadores(ifstream &,Operando &);
-
-void darWarning(char,const char * = "");
+bool seInsertaAntesDeNodo(Declaration declaracion,
+                          Declaration d_Aux);
 
 #endif /* CONVERTER_H */

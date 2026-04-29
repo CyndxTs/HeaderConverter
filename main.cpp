@@ -14,9 +14,11 @@ using namespace std;
 
 // Modulo Principal
 int main(int argc, char** argv) {
-    
+    //
+    ifstream archOrig = abrirArchivo_IFS("CodeSource.txt");
+    ofstream archDest = abrirArchivo_OFS("HeaderConversion.txt");
     // Proceso de Transcripcion Hacia Cabezera
-    HeaderConversion("CodeSource.txt","HeaderConversion.txt");
+    HeaderConversion(archOrig, archDest);
 
     return 0;
 }

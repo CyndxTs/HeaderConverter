@@ -15,6 +15,7 @@
                    displayName="Source Files"
                    projectFiles="true">
       <itemPath>converter.cpp</itemPath>
+      <itemPath>declaraciones.cpp</itemPath>
       <itemPath>main.cpp</itemPath>
     </logicalFolder>
     <logicalFolder name="TestFiles"
@@ -42,6 +43,8 @@
       <item path="converter.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="converter.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="declaraciones.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="declaraciones.h" ex="false" tool="3" flavor2="0">
       </item>
@@ -71,6 +74,8 @@
       <item path="converter.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="converter.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="declaraciones.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="declaraciones.h" ex="false" tool="3" flavor2="0">
       </item>

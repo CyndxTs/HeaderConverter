@@ -14,226 +14,703 @@ using namespace std;
 
                       /* - / Funciones en 'main()' / - */
 
-// Modulo de Conversion de Archivo hacia Cabezera
-void HeaderConversion(const char *fuente,const char *destino){
-    // Apertura de Archivos & Declaracion de Variables
-    ifstream archFuente = abrirArchivo_IFS(fuente);
-    ofstream archDestino = abrirArchivo_OFS(destino);
-    LDX ListaDeDeclaraciones{};
-    // Iterativa del Proceso de Transcripcion
+// Modulo de conversion de archivo
+void HeaderConversion(ifstream &archOrigen, ofstream &archDestino){
+    // Proceso de conversion
     while(1){
-        // SubDeclaracion de Variable Auxiliar en Bloque
-        Declaracion declaracion{};
-        // Proceso de Busqueda y Almacenamiento de Proxima KeyWord
-        almacenarProximaKeyWord(archFuente,declaracion.keyWord);
-        // Validacion de Fin de Archivo
-        if(archFuente.eof()) break;
-        // Procesamiento de Proximos Identificadores de Declaracion
-        procesarProximosIdentificadores(archFuente,declaracion);
-        // Procesamiento de Elementos por Tipo de Declaracion
-        procesarDeclaracionPorTipo(archFuente,ListaDeDeclaraciones,declaracion);
+        // Inicializacion de variables base de declaracion
+        char palabraClave[med_KW]{}, identificador[med_ID]{}, tipo = 0;
+        // Busqueda y almacenamiento de proxima palabra clave
+        almacenarProximaPalabraClave(archOrigen, palabraClave);
+        // Validacion de fin de archivo
+        if(archOrigen.eof()) break;
+        // Procesamiento de proximos identificadores de declaracion
+        procesarProximosIdentificadores(archOrigen, palabraClave, identificador, tipo);
+        // Inicializacion de nueva declaracion
+        Declaration declaracion {obtenerDinamicoExacto(palabraClave), obtenerDinamicoExacto(identificador), tipo};
+        // Procesamiento de subelementos de declaracion
+        procesarSubElementosDeDeclaracion(archOrigen, declaracion);
     }
-    // Validacion de Impresion de Declaraciones en Archivo
-    if(ListaDeDeclaraciones.inicial == nullptr) darWarning('E');
-    else imprimirLista(archDestino,ListaDeDeclaraciones);
+    // Impresion de lista de declaraciones
+    imprimirListaDeDeclaraciones(archDestino);
 }
 
                       /* - / Funciones Principales / - */
 
-// Modulo de Procesmiento por Tipo de Declaracion
-void procesarDeclaracionPorTipo(ifstream &archFuente,LDX &ListaDeDeclaraciones,
-                                Declaracion &declaracion){
-    // Seleccion de Proceso por Tipo de Declaracion
-    if(declaracion.tipo == 'F'){
-        // Validacion de Procesamiento de Funciones
-        if(procesarFunciones){
-            Funcion funcion{};
-            funcion.posApertura = strlen(declaracion.keyWord) +
-                                  strlen(declaracion.identificador);
-            obtenerParametros(archFuente,funcion);
-            declaracion.funcion = funcion;
-            insertarOrdenado(ListaDeDeclaraciones,declaracion);
+// Modulo de busqueda y almacenamiento de proxima palabra clave
+void almacenarProximaPalabraClave(ifstream &archOrigen, char *palabraClave){
+    // Declaracion de variables
+    bool KwCoincidentes[med_KW]{};
+    int posExacta = -1;
+    // Proceso de busqueda y almacenamiento
+    for (int i = 0; 1; i++){
+        bool haySimilares = false;
+        char letra = archOrigen.get();
+        // Validacion de fin de archivo
+        if (archOrigen.eof()) return;
+        // Validacion de descarte especial
+        if(not hayDescarteEspecial(archOrigen,letra)){
+            // Busqueda de cadena clave por posicion de letra
+            for(int posKw = 0; keywords[posKw].identificador[0]; posKw++){
+                if(KwCoincidentes[posKw] or i == 0){
+                    if(keywords[posKw].identificador[i] == letra){
+                        if(keywords[posKw].identificador[i+1] == 0){
+                            strcpy(palabraClave, keywords[posKw].identificador);
+                            posExacta = posKw;
+                        }
+                        KwCoincidentes[posKw] = true;
+                        haySimilares = true;
+                    } else KwCoincidentes[posKw] = false;
+                }
+            }
         }
-        descartarProximosDatosDeDeclaracion(archFuente,'F');
-    }else if(declaracion.tipo == 'A'){
-        // Validacion de Procesamiento de Variables Globales
-        if(procesarAsignaciones){
-            Asignacion asignacion{};
-            asignacion.posApertura = strlen(declaracion.keyWord) +
-                                     strlen(declaracion.identificador);
-            obtenerOperandos(archFuente,asignacion);
-            declaracion.asignacion = asignacion;
-            insertarOrdenado(ListaDeDeclaraciones,declaracion);
-        } else descartarProximosDatosDeDeclaracion(archFuente,'A');
-    } else darWarning('S');
+        // Validacion de existencia de coincidencias
+        if (not haySimilares){
+            // Validacion de existencia de solucion exacta encontrada
+            if(posExacta != -1){
+                if(esElemento(letra, modificadores)) archOrigen.unget();
+                return;
+            }
+            i = -1;
+        }
+    }
 }
-// Modulo de Impresion de Lista Simplemente Enlazada de Declaraciones
-void imprimirLista(ofstream &archSalida,LDX ldx){
-    // Declaracion de Variables
-    Nodo *nAux = ldx.inicial; bool espaciar = false,warningEmitido = false;
-    int ultPos;
-    // Iterativa del Proceso de Impresion
-    while (nAux != nullptr){
-        ultPos = strlen(nAux->declaracion.keyWord) - 1;
-        archSalida<<endl<<nAux->declaracion.keyWord;
-        if(not esElemento(nAux->declaracion.keyWord[ultPos],modificadores)){
-            espaciar = true;
-            archSalida<<' ';
-        } else espaciar = false;
-        archSalida<<nAux->declaracion.identificador;
-        // Seleccion de Tipo de Impresion por Tipo de Declaracion
-        switch(nAux->declaracion.tipo){
-            case 'A':
-                if(espaciar) nAux->declaracion.asignacion.posApertura++;
-                imprimirAsignacion(archSalida,nAux->declaracion.asignacion,
-                                   warningEmitido);
+// Modulo de procesamiento de proximos identificadores de elementos de declaracion
+void procesarProximosIdentificadores(ifstream &archOrigen, char *palabraClave, char *identificador, char &tipoDeclaracion){
+    // Declaration de variables
+    bool particion = false, sobrecargaDeOp = false;
+    char cadAux[med_ID]{};
+    // Procesamiento de identificadores
+    for(int posCad = 0; 1; posCad++){
+        char letra = archOrigen.get();
+        cadAux[posCad] = 0;
+        // Validacion de descarte especial
+        if(hayDescarteEspecial(archOrigen, letra)){
+            if(posCad > 0){
+                if(esPalabraClave(cadAux)){
+                    concatenarPorTipoDeElemento(palabraClave, cadAux, 'K');
+                    if(strcmp(cadAux, "operator") == 0) sobrecargaDeOp = true;
+                    posCad = 0;
+                } else particion = true;
+            } 
+            posCad--;
+        } else {
+            if(letra == '('){
+                strcpy(identificador, cadAux);
+                strcat(identificador, "(");
+                tipoDeclaracion = 'F';
                 break;
-            case 'F':
-                if(espaciar) nAux->declaracion.funcion.posApertura++;
-                imprimirFuncion(archSalida,nAux->declaracion.funcion,
-                                warningEmitido);
+            } else if(letra == ';'){
+                strcpy(identificador, cadAux);
+                strcat(identificador, ";");
+                tipoDeclaracion = 'A';
                 break;
-            default:
-                darWarning('S');
+            } else if(not sobrecargaDeOp and letra == '='){
+                strcpy(identificador, cadAux);
+                strcat(identificador, " =");
+                tipoDeclaracion = 'A';
+                break;
+            } else if(not sobrecargaDeOp and esElemento(letra, modificadores)){
+                if(esPalabraClave(cadAux)) {
+                    concatenarPorTipoDeElemento(palabraClave, cadAux, 'K');
+                } else if(posCad > 0) darWarning('P',"'Declaration'");
+                archOrigen.unget();
+                almacenarProximosModificadores(archOrigen, palabraClave);
+                posCad = -1;
+            } else if(esElemento(letra, 0, agrupadores)){
+                cadAux[posCad++] = letra;
+                letra = obtenerAgrupadorInverso(letra);
+                almacenarHastaDelimitador(archOrigen, cadAux, letra, posCad);
+                posCad--;
+            } else{
+                if(particion) darWarning('P',"'Declaration'");
+                else cadAux[posCad] = letra;
+            }
         }
-        nAux = nAux->proximo;
+    }
+}
+// Modulo de procesmiento de subelementos de declaracion
+void procesarSubElementosDeDeclaracion(ifstream &archOrigen, Declaration &declaracion){
+    // Validacion por tipo de declaracion
+    if(declaracion.tipo == 'F'){
+        // Validacion de procesamiento de funciones
+        if(pf.procesarFunciones){
+            Function *pFuncion = new Function;
+            pFuncion->numParametros = 0;
+            pFuncion->parametros = new Parameter[max_PO] {};
+            almacenarParametrosDeFuncion(archOrigen, *pFuncion);
+            declaracion.funcion = pFuncion;
+            insertarDeclaracionEnLista(declaracion);
+        }
+        descartarProximosDatosDeDeclaracion(archOrigen,'F');
+    } else {
+        // Validacion de procesamiento de asignaciones
+        if(pf.procesarAsignaciones){
+            Assignment *pAsignacion = new Assignment;
+            pAsignacion->esAgrupada = false;
+            pAsignacion->numOperandos = 0;
+            pAsignacion->operandos = new Operand[max_PO] {};
+            almacenarOperandosDeAsignacion(archOrigen, *pAsignacion);
+            declaracion.asignacion = pAsignacion;
+            insertarDeclaracionEnLista(declaracion);
+        } else descartarProximosDatosDeDeclaracion(archOrigen,'A');
     }
 }
 
                       /* - / Funciones Secundarias / - */
 
-// Modulo de Descarte de Datos por Tipo de Declaracion
-void descartarProximosDatosDeDeclaracion(ifstream &archFuente,char tipo){
-    switch(tipo){
-        case 'A':
-            descartarHastaDelimitador(archFuente,';');
-            break;
-        case 'F':
-            if(not procesarFunciones)
-                descartarHastaDelimitador(archFuente,')');
-            archFuente>>ws;
-            if(archFuente.get() == '{')
-                descartarHastaDelimitador(archFuente,'}');
-            break;
-        default:
-            darWarning('S');
+// Modulo de almacenamiento de parametros de funcion
+void almacenarParametrosDeFuncion(ifstream &archOrigen, Function &funcion){
+    // Almacenamiento de parametros de funcion
+    for(int pm = 0; 1; pm++){
+        // Inicializacion de nuevo parametro
+        Parameter parametro {};
+        parametro.palabraClave = new char[med_ID] {};
+        parametro.identificador = new char[med_ID] {};
+        // Procesamiento de identificadores de parametro
+        procesarProximosIdentificadores(archOrigen, parametro);
+        // Actualizacion de datos de parametro
+        funcion.parametros[pm] = parametro;
+        funcion.numParametros++;
+        // Validacion de fin de funcion
+        archOrigen.unget();
+        if(archOrigen.get() == ')') break;
+        // Validacion de espaciacion de subelementos
+        if(pf.espaciarSubelementos) strcat(funcion.parametros[pm].identificador, " ");
     }
 }
-// Modulo de Insercion Ordenada de Declaracion en Lista Simplemente Enlazada
-void insertarOrdenado(LDX &ldx,Declaracion declaracion){
-    // Declaracion & Inicializacion de Elementos
-    Nodo *nAux = ldx.inicial,*nAnt=nAux,*nNuevo = new Nodo{declaracion,nullptr};
-    // Validacion de lista Vacia | Validacion de Realizacion de Ordenamiento
-    if(ldx.inicial == nullptr){
-        ldx.inicial = nNuevo;
-        ldx.final = nNuevo;
-    } else {
-        if(ordenarDeclaraciones){
-            // Iterativa del Proceso de Ordenamiento
-            while(nAux != nullptr){
-                // Validacion de Insercion
-                if(seInsertaAntesDeNodo(declaracion,nAux->declaracion)){
-                    if(nAnt == nAux){
-                        nNuevo->proximo = ldx.inicial;
-                        ldx.inicial = nNuevo;
-                    } else{
-                        nAnt->proximo = nNuevo;
-                        nNuevo->proximo = nAux;
-                    }
-                    break;
+// Modulo de almacenamiento de operandos de asignacion
+void almacenarOperandosDeAsignacion(ifstream &archOrigen, Assignment &asignacion){
+    // Validacion de asignacion sin inicializacion
+    archOrigen.unget();
+    if(archOrigen.get() == ';') return;
+    // Validacion de asignacion agrupada
+    archOrigen>>ws;
+    if(archOrigen.get() == '{') asignacion.esAgrupada = true;
+    else archOrigen.unget();
+    // Almacenamiento de operandos de asignacion
+    for(int op = 0; 1; op++){
+        // Inicializacion de nuevo operando
+        Operand operando {};
+        operando.identificador = new char[med_ID] {};
+        // Procesamiento de identificadores de operando
+        procesarProximosIdentificadores(archOrigen, operando);
+        // Actualizacion de datos de operando
+        asignacion.operandos[op] = operando;
+        asignacion.numOperandos++;
+        // Validacion de fin de operando
+        archOrigen.unget();
+        char cAnt = archOrigen.get();
+        if(cAnt == ';' or cAnt == '}') break;
+    }
+}
+
+                       /* - / Funciones Derivadas / - */
+
+// Modulo de procesamiento de identificadores de parametro
+void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro){
+    // Declaracion de variables
+    bool particion = false;
+    char cadAux[med_ID]{};
+    // Procesamiento de identificadores
+    for(int posCad = 0; 1; posCad++){
+        char letra = archOrigen.get();
+        cadAux[posCad] = 0;
+        // Validacion de descarte especial
+        if(hayDescarteEspecial(archOrigen, letra)){
+            if(posCad > 0){
+                if(esPalabraClave(cadAux)){
+                    concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
+                    posCad = 0;
+                } else particion = true;
+            } 
+            posCad--;
+        } else{
+            if(esElemento(letra, separadores)) {
+                if(esPalabraClave(cadAux)){
+                    cadAux[posCad++] = letra;
+                    cadAux[posCad] = 0;
+                    concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
+                    posCad = 0;
+                } else {
+                    if(pf.suprimirVariables) posCad = 0;
+                    cadAux[posCad++] = letra;
+                    cadAux[posCad] = 0;
+                    strcat(parametro.identificador, cadAux);
                 }
-                nAnt = nAux;
-                nAux = nAux->proximo;
+                break;
+            } else if(letra == '='){
+                if(esPalabraClave(cadAux)){
+                    concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
+                    cadAux[0] = 0;
+                } else {
+                    if(pf.suprimirVariables) cadAux[0] = 0;
+                    strcat(parametro.identificador, cadAux);
+                }
+                descartarHastaDelimitador(archOrigen, ',');
+                break;
+            } else if(esElemento(letra, modificadores)){
+                if(esPalabraClave(cadAux)) concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
+                else if(posCad > 0) darWarning('P',"'Parameter' de 'Funcion'");
+                archOrigen.unget();
+                almacenarProximosModificadores(archOrigen, parametro.palabraClave);
+                posCad = -1;
+            } else if(esElemento(letra, 0, agrupadores)){
+                if(esPalabraClave(cadAux)){
+                    concatenarPorTipoDeElemento(parametro.palabraClave, cadAux,'K');
+                    posCad = 0;
+                } else if(pf.suprimirVariables) posCad = 0;
+                cadAux[posCad++] = letra;
+                letra = obtenerAgrupadorInverso(letra);
+                almacenarHastaDelimitador(archOrigen, cadAux, letra, posCad);
+                cadAux[posCad] = 0;
+                strcat(parametro.identificador, cadAux);
+                posCad = -1;
+                particion = true;
+            } else{
+                if(particion) darWarning('P',"'Parameter' de 'Funcion'");
+                else cadAux[posCad] = letra;
             }
-        } else nAux = nullptr;
-        // Validacion por Insercion en Ultimo Elemento
-        if(nAux == nullptr){
-            ldx.final->proximo = nNuevo;
-            ldx.final = nNuevo;
         }
+    }
+}
+// Modulo de procesamiento de identificadores de operando
+void procesarProximosIdentificadores(ifstream &archOrigen, Operand &operando){
+    // Declaration de variables
+    bool procesado = false, opValidacion[max_OP]{};
+    int posID = 0, posEval = 0, posExacto = -1;
+    char anterior = 0, anteriorDeOp, proximoDeOp;
+    // Procesamiento de identificadores
+    while(1){
+        char letra = archOrigen.get();
+        bool haySimilares = false;
+        bool huboDescarte = hayDescarteEspecial(archOrigen,letra);
+        if(not huboDescarte){
+            operando.identificador[posID++] = letra;
+            if(esElemento(letra, separadores)) {
+                operando.identificador[posID] = 0;
+                if(letra == '}') strcat(operando.identificador, ";");
+                break;
+            } else if(esElemento(letra, 0, agrupadores)){
+                procesado = true;
+                almacenarHastaDelimitador(archOrigen, operando.identificador, obtenerAgrupadorInverso(letra), posID);
+            } else{
+                for(int posOp=0;operators[posOp].identificador[0];posOp++){
+                    if(opValidacion[posOp] or posEval == 0){
+                        if(operators[posOp].identificador[posEval] == letra){
+                            if(operators[posOp].identificador[posEval+1]=='\0'){
+                                proximoDeOp = archOrigen.get();
+                                if(operators[posOp].esAcotable or not(esLetra(anteriorDeOp) or esLetra(proximoDeOp))) posExacto = posOp;
+                                archOrigen.unget();
+                            }
+                            opValidacion[posOp] = true;
+                            haySimilares = true;
+                        } else opValidacion[posOp] == false;
+                    }
+                }
+                posEval++;
+            }
+        }
+        if (not haySimilares){
+            if(posExacto != -1){
+                if(huboDescarte) operando.identificador[posID] = 0;
+                else operando.identificador[--posID] = 0;
+                archOrigen.unget();
+                if(operators[posExacto].esSegmentador) espaciarOperadorEnCadena(operators[posExacto].identificador, operando.identificador, false);
+                break;
+            } else if(posEval > 1){
+                if(not procesado){
+                    archOrigen.unget();
+                    posID--;
+                } else procesado = false;
+            }
+            posEval = 0;
+            anteriorDeOp = letra;
+        }
+        anterior = letra;
+    }
+}
+
+                       /* - / Funciones Auxiliares / - */
+
+// Modulo de apertura de archivos 'ifstream'
+ifstream abrirArchivo_IFS(const char *nombArch){
+    ifstream archIFS(nombArch, ios::in);
+    fstream archFS(nombArch, ios::in|ios::out);
+    archFS.seekg(-1,ios::end);
+    if(archFS.get() != '\n') archFS<<endl;
+    return archIFS;
+}
+// Modulo de apertura de archivos 'ofstream'
+ofstream abrirArchivo_OFS(const char *nombArch){
+    ofstream archOFS(nombArch, ios::out);
+    return archOFS;
+}
+// Modulo de validacion de simbolo como 'Letra'
+bool esLetra(char simbolo){
+    return (simbolo >= 'A' and simbolo <= 'z');
+}
+// Modulo de validacion de simbolo como 'Numero'
+bool esNumero(char simbolo){
+    return (simbolo >= '0' and simbolo <= '9');
+}
+// Modulo de validacion de cadena como 'Keyword'
+bool esPalabraClave(char *cadena){
+    for(int i = 0; keywords[i].identificador[0]; i++) if(strcmp(keywords[i].identificador, cadena) == 0) return true;
+    return false;
+}
+// Modulo de validacion de simbolo como elemento de un conjunto 'char'
+bool esElemento(char simbolo, const char *conjunto){
+    for(int i = 0; conjunto[i]; i++) if(conjunto[i] == simbolo) return true;
+    return false;
+}
+// Modulo de validacion de simbolo como elemento en posición específica de un conjunto 'char *'
+bool esElemento(char simbolo, int j, const char **conjunto){
+    for(int i = 0; conjunto[i]; i++) {
+        if(conjunto[i][j] == simbolo) return true;
+    }
+    return false;
+}
+// Modulo validacion y procesamiento de descarte especial
+bool hayDescarteEspecial(ifstream &archOrigen, char letra){
+    if(esElemento(letra, espaciadores)) archOrigen>>ws;
+    else if (hayDescarteDeComentario(archOrigen, letra));
+    else if(letra == '#') while(archOrigen.get() != '\n');
+    else return false;
+    return true;
+}
+// Modulo validacion y procesamiento de descarte de comentario
+bool hayDescarteDeComentario(ifstream &archOrigen, char letra){
+    if(letra == '/'){
+        letra = archOrigen.get();
+        if (letra == '/') while (archOrigen.get() != '\n');
+        else if (letra == '*') {
+            while (1) {
+                while (archOrigen.get() != '*' and not archOrigen.eof());
+                if (archOrigen.eof() or archOrigen.get() == '/') break;
+            }
+        } else{
+            archOrigen.unget();
+            return false;
+        }
+        return true;
+    } else return false;
+}
+// Modulo de retorno de agrupador inverso
+char obtenerAgrupadorInverso(char simbolo) {
+    for (int i = 0; agrupadores[i][0]; i++){
+        if (agrupadores[i][0] == simbolo) return agrupadores[i][1];
+        else if (agrupadores[i][1] == simbolo) return agrupadores[i][0];
+    }
+    return 0;
+}
+// Modulo de retorno de cadena exacta en memoria dinámica
+char *obtenerDinamicoExacto(const char *cadena) {
+    char *dinamicoExacto = new char[strlen(cadena) + 1] {};
+    strcpy(dinamicoExacto, cadena);
+    return dinamicoExacto;
+}
+// Modulo de concatenacion de cadenas por tipo de elemento ['Keyword' || 'Identifier']
+void concatenarPorTipoDeElemento(char *cadDestino, char *cadOrigen, char tipo){
+    int medida = strlen(cadDestino);
+    if(medida > 0){
+        if((tipo == 'K' and !(esElemento(cadDestino[medida - 1], modificadores))) or tipo == 'I'){
+            strcat(cadDestino," ");
+        }
+    }
+    strcat(cadDestino, cadOrigen);
+}
+// Modulo de Descarte de Datos por Tipo de Declaration
+void descartarProximosDatosDeDeclaracion(ifstream &archOrigen, char tipo){
+    if(tipo == 'F') {
+        if(not pf.procesarFunciones) descartarHastaDelimitador(archOrigen,')');
+        archOrigen>>ws;
+        if(archOrigen.get() == '{') descartarHastaDelimitador(archOrigen,'}');
+    } else descartarHastaDelimitador(archOrigen,';');
+}
+// Modulo de descarte de caracteres hasta delimitador
+void descartarHastaDelimitador(ifstream &archOrigen, char delimitador){
+    char letra = 0;
+    while (1) {
+        letra = archOrigen.get();
+        if (letra == delimitador) break;
+        if ((delimitador != 39 and delimitador != '"') and (esElemento(letra, 0, agrupadores) and letra != archOrigen.get())){
+            archOrigen.unget();
+            letra = obtenerAgrupadorInverso(letra);
+            descartarHastaDelimitador(archOrigen,letra);
+        }
+    }
+}
+// Modulo de almacenamiento de caracteres hasta delimitador en cadena desde posición específica
+void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimitador, int &posCad){
+    bool existeLetra = false;
+    int medContenido = 0;
+    char letra = 0;
+    while (1){
+        letra = archOrigen.get();
+        if(not hayDescarteDeComentario(archOrigen, letra)){
+            if (letra != '\n'){
+                medContenido++;
+                if (delimitador == '"' or not esElemento(letra, espaciadores)){
+                    cadena[posCad++] = letra;
+                    if (letra != delimitador) existeLetra = true;
+                }
+                if ((delimitador != 39 and delimitador != '"') and (esElemento(letra, 0, agrupadores) and letra != archOrigen.get())){
+                    archOrigen.unget();
+                    almacenarHastaDelimitador(archOrigen, cadena, obtenerAgrupadorInverso(letra), posCad);
+                }
+            }
+            if(letra == delimitador){
+                if(delimitador == 39 and medContenido > 1 and not existeLetra){
+                    cadena[posCad-1] = ' ';
+                    cadena[posCad++] = delimitador;
+                }
+                cadena[posCad] = 0;
+                break;
+            }
+        }
+    }
+}
+// Modulo de Extraccion de Proximos Modificadores de Palabra Clave
+void almacenarProximosModificadores(ifstream &archOrigen, char *cadena){
+    int medida = strlen(cadena); char letra;
+    for (int i = medida;1;i++){
+        archOrigen>>ws;
+        letra = archOrigen.get();
+        if (not esElemento(letra,modificadores)){
+            cadena[i] = 0;
+            archOrigen.unget();
+            break;
+        } else if (i == medida) cadena[i++] = ' ';
+        cadena[i] = letra;
+    }
+}
+// Modulo De Separacion de Operador e Identificador
+void espaciarOperadorEnCadena(const char *op,char *cad,bool espaciarAlFinal){
+    int medOperador = strlen(op),posCad = strlen(cad) - medOperador;
+    cad[posCad++] = ' ';
+    cad[posCad] = 0;
+    strcat(cad,op);
+    if(espaciarAlFinal) strcat(cad," ");
+}
+// Modulo de Emision de Errores Comunes
+void darWarning(char warningID,const char *reason = ""){
+    switch (warningID){
+        case 'A':   // A -> Archive Aperture
+            cout<<"[ ERROR DE APERTURA ]"<<endl;
+            cout<<"No se encontro el archivo '"<<reason<<"' en el directorio.";
+            cout<<endl<<endl<<"[#] Acciones recomendadas:"<<endl;
+            cout<<"   [A] Verificar la ruta del archivo."<<endl;
+            cout<<"   [B] Verificar el nombre del archivo ingresado."<<endl;
+            cout<<"   [C] Verificar si se agrego la extension del archivo.";
+            cout<<endl;
+            break;
+        case 'E':   // E -> Empty
+            cout<<"[ SIN RESULTADOS ]"<<endl;
+            cout<<endl<<"No existe error como tal.."<<endl;
+            cout<<"Esto solo signifca que no hay nada para convertir."<<endl;
+            cout<<endl<<"[#] Acciones recomendadas:"<<endl;
+            cout<<"   [A] Activar alguno de los controladores de muestra.";
+            cout<<endl<<"   [B] Editar el archivo fuente."<<endl;
+            return;
+        case 'L':   // L -> Limit
+            cout<<"[ SIN AJUSTE A LIMITE ]"<<endl;
+            cout<<endl<<"No existe error como tal.."<<endl;
+            cout<<"No obstante, fue imposible acomodar algunas declaraciones";
+            cout<<endl<<"respecto al margen de pagina ['"<<pf.limitePorMargen;
+            cout<<"']. Por ello, se"<<endl<<"ignoro el ajuste hacia ";
+            cout<<"margen en estas declaraciones."<<endl;
+            cout<<"Primera Ubicacion: "<<reason<<endl<<endl;
+            cout<<"[#] Acciones recomendadas:"<<endl;
+            cout<<"   [A] Incrementar el limite de margen."<<endl;
+            cout<<"   [B] Editar el archivo Fuente"<<endl;
+            cout<<"   [C] Desactivar el controlador de ajuste a margen."<<endl;
+            return;
+        case 'O':   // O -> Order
+            cout<<"ERROR POR ORDENAMIENTO";
+            cout<<endl<<endl<<"El tipo de ordenamiento '";
+            cout<<reason<<"' definido en el controlador es ";
+            cout<<endl<<"invalido."<<endl<<"[#] Acciones recomendadas:"<<endl;
+            cout<<"[A] Modificar el valor del controlador de tipo de";
+            cout<<endl<<"    ordenamiento a alguno de los tipos predefinidos:";
+            cout<<endl<<"    ['A'] Ascendente | ['C'] Consecuente | ";
+            cout<<"['D'] Descendente"<<endl;
+            cout<<"    Recordar que la secuencia debe ser de unicamente"<<endl;
+            cout<<"    '3' caracteres, y que la posicion de cada criterio de";
+            cout<<"ordenamiento es:"<<endl;
+            cout<<"        {Tipo de Declaration}{KeyWords}{Identificadores}";
+            cout<<endl<<"    Por ejemplo, con la secuencia 'ADA' el ";
+            cout<<"ordenamiento sería:"<<endl;
+            cout<<"    - Ascendente por Tipo de Declaration"<<endl;
+            cout<<"    - Descendente por Keyword"<<endl;
+            cout<<"    - Ascendente por Identificador"<<endl;
+            break;
+        case 'P':   // P -> Partition
+            cout<<"[ ERROR POR PARTICION ]"<<endl;
+            cout<<endl<<"Se ha detectado la partición de un identificador.";
+            cout<<endl<<"Ubicacion: "<<reason<<endl<<endl;
+            cout<<"[#] Acciones recomendadas:"<<endl;
+            cout<<"   [A] Agregar una palabra clave faltante en el";
+            cout<<" diccionario"<<endl<<"       respectivo."<<endl;
+            cout<<"   [B] Editar el archivo fuente."<<endl;
+            break;
+        case 'S':   // S -> Soon
+            cout<<"[ COMING SOON ]"<<endl;
+            cout<<"Has descubierto una funcionalidad que aun se esta ";
+            cout<<"preparando.. * fallece *"<<endl;
+            break;
+    }
+    exit(1);
+}
+// Modulo de limpieza de lista de declaraciones en memoria
+void limpiarListaDeDeclaraciones() {
+    Node *pAux = ldx.inicial, *pAnt;
+    while(pAux != nullptr) {
+        delete[] pAux->declaracion->palabraClave;
+        delete[] pAux->declaracion->identificador;
+        if(pAux->declaracion->funcion != nullptr) {
+            for(int i = 0; i < pAux->declaracion->funcion->numParametros; i++) {
+                delete[] pAux->declaracion->funcion->parametros[i].palabraClave;
+                delete[] pAux->declaracion->funcion->parametros[i].identificador;
+            }
+            delete[] pAux->declaracion->funcion->parametros;
+            delete pAux->declaracion->funcion;
+        }
+        if(pAux->declaracion->asignacion != nullptr) {
+            for(int i = 0; i < pAux->declaracion->asignacion->numOperandos; i++) {
+                delete[] pAux->declaracion->asignacion->operandos[i].identificador;
+            }
+            delete[] pAux->declaracion->asignacion->operandos;
+            delete pAux->declaracion->asignacion;
+        }
+        delete pAux->declaracion;
+        pAnt = pAux;
+        pAux = pAux->proximo;
+        delete pAnt;
+    }
+    ldx.inicial = nullptr;
+    ldx.final = nullptr;
+}
+// Modulo de Impresion de Lista Simplemente Enlazada de Declaraciones
+void imprimirListaDeDeclaraciones(ofstream &archSalida){
+    Node *pAux = ldx.inicial;
+    while (pAux != nullptr){
+        int posApertura = strlen(pAux->declaracion->palabraClave) + strlen(pAux->declaracion->identificador);
+        archSalida<<endl<<pAux->declaracion->palabraClave;
+        if(not esElemento(pAux->declaracion->palabraClave[strlen(pAux->declaracion->palabraClave) - 1], modificadores)){
+            archSalida<<' ';
+            posApertura++;
+        }
+        archSalida<<pAux->declaracion->identificador;
+        switch(pAux->declaracion->tipo){
+            case 'A':
+                imprimirAsignacion(archSalida, *(pAux->declaracion->asignacion), posApertura);
+                break;
+            case 'F':
+                imprimirFuncion(archSalida, *(pAux->declaracion->funcion), posApertura);
+                break;
+            default:
+                darWarning('S');
+        }
+        pAux = pAux->proximo;
     }
 }
 // Modulo de Impresion de Datos de Funcion en Formato PREDETERMINADO
-void imprimirFuncion(ofstream &archSalida,Funcion funcion,bool &warningEmitido){
-    // Declaracion de Variables
-    Parametro parametro; int numParametros = funcion.numParametros,ultPos;
-    int posApertura = funcion.posApertura,posColumna = posApertura;
-    bool existeID,existeMD,separarElementos;
-    // Iterativa del Proceso de Impresion de Funcion
-    for(int p = 0;p < numParametros;p++){
-        parametro = funcion.parametros[p];
-        ultPos = strlen(parametro.keyWord) - 1;
-        existeMD = esElemento(parametro.keyWord[ultPos],modificadores);
+void imprimirFuncion(ofstream &archSalida, Function funcion, int posApertura){
+    int numParametros = funcion.numParametros;
+    int posColumna = posApertura, posConjunta;
+    bool existeID, existeMD, separarElementos;
+    for(int p = 0; p < numParametros; p++){
+        Parameter parametro = funcion.parametros[p];
+        existeMD = esElemento(parametro.palabraClave[strlen(parametro.palabraClave) - 1], modificadores);
         existeID = (strlen(parametro.identificador) > 1);
         separarElementos = existeID and not existeMD;
-        if(separarElementos) parametro.posConjunta++;
-        if(p == numParametros - 1) parametro.posConjunta++;
-        if(seAjustaPorMargen(archSalida,posApertura,parametro.posConjunta,
-                             posColumna) and p == 0){
+        posConjunta = strlen(parametro.palabraClave) + strlen(parametro.identificador);
+        if(separarElementos) posConjunta++;
+        if(p == numParametros - 1) posConjunta++;
+        if(seAjustaPorMargen(archSalida,posApertura, posConjunta, posColumna) and p == 0){
             archSalida.seekp(-1*(posApertura+2),ios::cur);
-            if(not warningEmitido){
-                darWarning('L',"'Funcion'");
-                warningEmitido = true;
-            }
         }
-        archSalida<<parametro.keyWord;
+        archSalida<<parametro.palabraClave;
         if(separarElementos) archSalida.put(' ');
         archSalida<<parametro.identificador;
     }
-    archSalida<<simboloDelimitador<<endl;
+    archSalida<<pf.simboloDelimitador<<endl;
 }
-// Modulo de Impresion de Datos de Asignacion en Formato PREDETERMINADO
-void imprimirAsignacion(ofstream &archSalida,Asignacion asignacion,
-                        bool &warningEmitido){
-    // Declaracion de Variables
-    Operando operando; int numOperandos = asignacion.numOperandos;
-    int posApertura = asignacion.posApertura,posColumna = posApertura;
-    // Validacion de Agrupacion
+// Modulo de Impresion de Datos de Assignment en Formato PREDETERMINADO
+void imprimirAsignacion(ofstream &archSalida,Assignment asignacion, int posApertura){
+    int numOperandos = asignacion.numOperandos;
+    int posColumna = posApertura, posConjunta;
     if(asignacion.esAgrupada){
         posColumna++;
         archSalida<<" {";
         for(int op = 0;op < numOperandos;op++){
-            operando = asignacion.operandos[op];
-            if(seAjustaPorMargen(archSalida,posApertura,operando.posConjunta,
-                                 posColumna) and op == 0){
+            Operand operando = asignacion.operandos[op];
+            posConjunta = strlen(operando.identificador);
+            if(seAjustaPorMargen(archSalida,posApertura, posConjunta, posColumna) and op == 0){
                 archSalida.seekp(-1*(posApertura+2),ios::cur);
-                if(not warningEmitido){
-                    darWarning('L',"'Funcion'");
-                    warningEmitido = true;
-                }
             }
             archSalida<<operando.identificador;
         }
     } else{
         for(int op = 0;op < numOperandos;op++){
-            operando = asignacion.operandos[op];
-            if(seAjustaPorMargen(archSalida,posApertura,1+operando.posConjunta,
-                                 posColumna) and op == 0){
+            Operand operando = asignacion.operandos[op];
+            posConjunta = strlen(operando.identificador);
+            if(seAjustaPorMargen(archSalida,posApertura,1 + posConjunta, posColumna) and op == 0){
                 archSalida.seekp(-1*(posApertura+2),ios::cur);
-                if(not warningEmitido){
-                    darWarning('L',"'Funcion'");
-                    warningEmitido = true;
-                }
             }
             archSalida<<' '<<operando.identificador;
         }
     }
     archSalida<<endl;
 }
-
-                       /* - / Funciones Derivadas / - */
-
-// Modulo de Validacion de Insercion de Declaracion Antes de Nodo
-bool seInsertaAntesDeNodo(Declaracion declaracion,Declaracion d_Aux){
-    // Declaracion de Variables
+// Modulo de Validacion y Ejecucion de Ajuste Hacia Margen
+bool seAjustaPorMargen(ofstream &archSalida,int posApertura,int posConjunta,
+                       int &posColumna){
+    if(pf.ajustarPorMargen and posColumna + posConjunta > pf.limitePorMargen){
+        archSalida<<endl<<setw(posApertura)<<' ';
+        posColumna = posApertura + posConjunta;
+        return true;
+    } else posColumna += posConjunta;
+    return false;
+}
+// Modulo de Insercion Ordenada de Declaration en Lista Simplemente Enlazada
+void insertarDeclaracionEnLista(Declaration declaracion){
+    Node *pAux = ldx.inicial, *pAnt = pAux, *pNuevo = new Node {new Declaration {declaracion}, nullptr};
+    if(ldx.inicial == nullptr){
+        ldx.inicial = pNuevo;
+        ldx.final = pNuevo;
+    } else {
+        if(pf.ordenarDeclaraciones){
+            while(pAux != nullptr){
+                if(seInsertaAntesDeNodo(declaracion, *(pAux->declaracion))){
+                    if(pAnt == pAux){
+                        pNuevo->proximo = ldx.inicial;
+                        ldx.inicial = pNuevo;
+                    } else{
+                        pAnt->proximo = pNuevo;
+                        pNuevo->proximo = pAux;
+                    }
+                    break;
+                }
+                pAnt = pAux;
+                pAux = pAux->proximo;
+            }
+        } else pAux = nullptr;
+        if(pAux == nullptr){
+            ldx.final->proximo = pNuevo;
+            ldx.final = pNuevo;
+        }
+    }
+}
+// Modulo de Validacion de Insercion de Declaration Antes de Node
+bool seInsertaAntesDeNodo(Declaration declaracion, Declaration d_Aux){
     int diff_DT,diff_KW,diff_ID;
-    // Calculo de Criterios de Ordenamiento
     diff_DT = declaracion.tipo - d_Aux.tipo;
-    diff_KW = strcmp(declaracion.keyWord,d_Aux.keyWord);
-    diff_ID = strcmp(declaracion.identificador,d_Aux.identificador);
-    // Iterativa del Proceso de Seleccion de Validacion de Insercion Ordenada
+    diff_KW = strcmp(declaracion.palabraClave, d_Aux.palabraClave);
+    diff_ID = strcmp(declaracion.identificador, d_Aux.identificador);
     for (int i = 0;i < 3;i++) {
-        switch (criteriosDeOrdenamiento[i]){
+        switch (pf.criteriosDeOrdenamiento[i]){
             case 'A':
                 if ((i == 0 and diff_DT < 0) or
                     (i == 1 and diff_DT == 0 and diff_KW < 0) or
@@ -251,635 +728,8 @@ bool seInsertaAntesDeNodo(Declaracion declaracion,Declaracion d_Aux){
                     return true;
                 break;
             default:
-                darWarning('O',criteriosDeOrdenamiento);
+                darWarning('O',pf.criteriosDeOrdenamiento);
         }
     }
     return false;
-}
-// Modulo de Validacion y Ejecucion de Ajuste Hacia Margen
-bool seAjustaPorMargen(ofstream &archSalida,int posApertura,int posConjunta,
-                       int &posColumna){
-    // Validacion de Ajuste a Margen
-    if(ajustarPorMargen and posColumna + posConjunta > limitePorMargen){
-        archSalida<<endl<<setw(posApertura)<<' ';
-        posColumna = posApertura + posConjunta;
-        return true;
-    } else posColumna += posConjunta;
-    return false;
-}
-
-                       /* - / Funciones Auxiliares / - */
-
-// Modulo de Apertura de Archivos IFSTREAM
-ifstream abrirArchivo_IFS(const char *nombArch){
-    // Apertura de Archivos
-    ifstream archIFS(nombArch,ios::in);
-    fstream archFS(nombArch,ios::in|ios::out);
-    // Validacion de Apertura
-    if(not archIFS.is_open()) darWarning('A',nombArch);
-    // Correccion Rapida de Archivo por Enter
-    archFS.seekg(-1,ios::end);
-    if(archFS.get() != '\n') archFS<<endl;
-    // Retorno de Archivo
-    return archIFS;
-}
-// Modulo de Apertura de Archivos OFSTREAM
-ofstream abrirArchivo_OFS(const char *nombArch){
-    // Apertura de Archivo
-    ofstream archOFS(nombArch, ios::out);
-    // Validacion de Apertura
-    if(not archOFS.is_open()) darWarning('A',nombArch);
-    // Retorno de Archivo
-    return archOFS;
-}
-// Modulo de Validacion de Caracter como Elemento de un Conjunto 'char'
-bool esElemento(char simbolo,const char *conjunto){
-    for(int i = 0;conjunto[i];i++)
-        if(conjunto[i] == simbolo) return true;
-    return false;
-}
-// Modulo de Validacion de Caracter como 'Agrupador'
-bool esAgrupador(char simbolo,int j){
-    for(int i = 0;agrupadores[i][0];i++)
-        if(agrupadores[i][j] == simbolo) return true;
-    return false;
-}
-// Modulo de Validacion de Caracter como 'Letra'
-bool esLetra(char simbolo){
-    return (simbolo >= 'A' and simbolo <= 'z');
-}
-// Modulo de Validacion de Caracter como 'Numero'
-bool esNumero(char simbolo){
-    return (simbolo >= '0' and simbolo <= '9');
-}
-// Modulo de Validacion de Cadena como 'KeyWord'
-bool esKeyWord(char *cadena){
-    for(int i = 0;keyWords[i].identificador[0];i++)
-        if(strcmp(keyWords[i].identificador,cadena) == 0) return true;
-    return false;
-}
-// Modulo de Seleccion de Proceso de Descarte Especial
-bool hayDescarteEspecial(ifstream &archFuente,char letra){
-    if(esElemento(letra,espaciadores)) archFuente>>ws;
-    else if (hayDescarteDeComentario(archFuente,letra));
-    else if(letra == '#') while(archFuente.get() != '\n');
-    else return false;
-    return true;
-}
-// Modulo de Validacion & Ejecucion de Descarte de Comentario
-bool hayDescarteDeComentario(ifstream &archFuente,char letra){
-    // Validacion de Inicio de Comentario
-    if(letra == '/'){
-        letra = archFuente.get();
-        // Validacion para Proceso de Descarte
-        if (letra == '/') while (archFuente.get() != '\n');
-        else if (letra == '*') {
-            while (1) {
-                while (archFuente.get() != '*' and not archFuente.eof());
-                if (archFuente.eof() or archFuente.get() == '/') break;
-            }
-        } else{
-            archFuente.unget();
-            return false;
-        }
-        return true;
-    } else return false;
-}
-// Modulo de Retorno de Agrupador Inverso
-char obtenerAgrupadorInverso(char simbolo) {
-    for (int i = 0;i < agrupadores[i][0];i++){
-        if (agrupadores[i][0] == simbolo) return agrupadores[i][1];
-        else if (agrupadores[i][1] == simbolo) return agrupadores[i][0];
-    }
-    return 0;
-}
-// Modulo de Concatenacion de Cadenas por Formato de Tipo de Elemento [KeyWord || Identifier]
-void concatenarNuevoElemento(char *cadDestino,char *cadFuente,char tipo){
-    // Declaracion de Variables
-    int medida = strlen(cadDestino);
-    // Validacion de Separacion por KeyWord Existente
-    if(medida > 0){
-        if((tipo == 'K' and !(esElemento(cadDestino[medida - 1],modificadores)))
-            or tipo == 'I'){
-            strcat(cadDestino," ");
-        }
-    }
-    strcat(cadDestino,cadFuente);
-}
-// Modulo De Separacion de Operador e Identificador
-void espaciarOperadorEnCadena(const char *op,char *cad,bool espaciarAlFinal){
-    // Declaracion de Variables
-    int medOperador = strlen(op),posCad = strlen(cad) - medOperador;
-    // Proceso de Espaciacion
-    cad[posCad++] = ' ';
-    cad[posCad] = 0;
-    strcat(cad,op);
-    if(espaciarAlFinal) strcat(cad," ");
-}
-// Modulo de Extracción de Cadena hasta Delimitador [Formato de Extracción: PREDETERMINADO]
-void almacenarHastaDelimitador(ifstream &archFuente,char *cadena,
-                               char delimitador,int &posCad){
-    // Declaracion de Variables
-    bool existeLetra = false; int medContenido = 0; char letra = 0;
-    // Iterativa del Proceso de Almacenamiento
-    while (1){
-        letra = archFuente.get();
-        // Validacion de Letra Obtenida & Delimitador Fijado
-        if(not hayDescarteDeComentario(archFuente,letra)){
-            // Filtro de Enter
-            if (letra != '\n'){
-                medContenido++;
-                // Validacion de Almacenamiento de Letra
-                if (delimitador == '"' or not esElemento(letra,espaciadores)){
-                    cadena[posCad++] = letra;
-                    if (letra != delimitador) existeLetra = true;
-                }
-                // Validacion Existencia de Subnivel
-                if (esAgrupador(letra,0) and
-                    (delimitador != 39 and delimitador != '"')){
-                    almacenarHastaDelimitador(archFuente,cadena,
-                                              obtenerAgrupadorInverso(letra),
-                                              posCad);
-                }
-            }
-            // Validacion de Cierre
-            if(letra == delimitador){
-                // Validacion de Filtracion Previa de Espaciado en Caracter
-                if(delimitador == 39 and medContenido > 1 and not existeLetra){
-                    cadena[posCad-1] = ' ';
-                    cadena[posCad++] = delimitador;
-                }
-                cadena[posCad] = 0;
-                break;
-            }
-        }
-    }
-}
-// Modulo de Descarte de Cadena hasta Delimitador [Formato de Descarte: PREDETERMINADO]
-void descartarHastaDelimitador(ifstream &archFuente,char delimitador){
-    // Declaracion de Variables
-    char letra = 0;
-    // Iterativa del Proceso de Descarte
-    while (1) {
-        letra = archFuente.get();
-        // Validacion de Cierre
-        if (letra == delimitador) break;
-        // Validacion Existencia de Subnivel
-        if ((delimitador != 39 and delimitador != '"') and
-            (esAgrupador(letra,0) and letra != '<')){
-            letra = obtenerAgrupadorInverso(letra);
-            descartarHastaDelimitador(archFuente,letra);
-        }
-    }
-}
-// Modulo de Busqueda e Inserción de Proxima Cadena Clave
-void almacenarProximaKeyWord(ifstream &archFuente,char *keyWord){
-    // Declaracion de Variables
-    bool KwCoincidentes[med_KW]{},haySimilares; int posExacta = -1; char letra;
-    // Iterativa del Proceso de Busqueda e Insercion
-    for (int i = 0;1;i++){
-        letra = archFuente.get();
-        if (archFuente.eof()) return; // Validacion de Fin de Archivo
-        haySimilares = false;
-        // Validacion de Descarte Especial |  Filtracion de Cadena Clave por Posicion de Letra
-        if(not hayDescarteEspecial(archFuente,letra)){
-            for(int posKw = 0;keyWords[posKw].identificador[0];posKw++){
-                if(KwCoincidentes[posKw] or i == 0){
-                    if(keyWords[posKw].identificador[i] == letra){
-                        if(keyWords[posKw].identificador[i+1] == 0){
-                            strcpy(keyWord,keyWords[posKw].identificador);
-                            posExacta = posKw;
-                        }
-                        KwCoincidentes[posKw] = true;
-                        haySimilares = true;
-                    } else KwCoincidentes[posKw] = false;
-                }
-            }
-        }
-        // Validacion de Existencia de Coincidencias | Validacion de Existencia de Solucion Exacta Previa
-        if (not haySimilares){
-            if(posExacta != -1){
-                if(esElemento(letra,modificadores)) archFuente.unget();
-                return;
-            }
-            i = -1;
-        }
-    }
-}
-// Modulo de Extraccion de Proximos Modificadores de Palabra Clave
-void agregarProximosModificadores(ifstream &archFuente,char *cadena){
-    // Declaracion de Variables
-    int medida = strlen(cadena); char letra;
-    // Iterativa del Proceso de Extraccion de Modificadores
-    for (int i = medida;1;i++){
-        archFuente>>ws;
-        letra = archFuente.get();
-        // Validacion por Fin de Modificador & Posicion
-        if (not esElemento(letra,modificadores)){
-            cadena[i] = 0;
-            archFuente.unget();
-            break;
-        } else if (i == medida) cadena[i++] = ' ';
-        cadena[i] = letra;
-    }
-}
-// Modulo SOBRECARGADO de Extraccion y Procesamiento de Proximos Identificadores [Variante: Declaraciones]
-void procesarProximosIdentificadores(ifstream &archFuente,
-                                     Declaracion &declaracion){
-    // Declaracion de Variables
-    bool particion = false,finalizar = false,sobrecargaDeOp = false;
-    char letra,cadena[med_ID]{};
-    // Iterativa del Proceso
-    for(int posCad = 0;not finalizar;posCad++){
-        letra = archFuente.get();
-        cadena[posCad] = 0;
-        // Validacion por Delimitado de Cadena
-        if(hayDescarteDeComentario(archFuente,letra) or
-           esElemento(letra,espaciadores)){
-            // Validacion de Almacenamiento de Identificador
-            if(posCad > 0){
-                if(esKeyWord(cadena)){
-                    concatenarNuevoElemento(declaracion.keyWord,cadena,'K');
-                    if(strcmp(cadena,"operator") == 0) sobrecargaDeOp = true;
-                    posCad = 0;
-                } else particion = true;
-            } 
-            posCad--;
-        } else{
-            procesamientoPorTipoDeLetra(archFuente,declaracion,cadena,letra,
-                                        sobrecargaDeOp,posCad,particion,
-                                        finalizar);
-        }
-    }
-}
-// Modulo SOBRECARGADO de Seleccion de Procesos por Tipo de Letra Obtenida [Variante: Declaracion]
-void procesamientoPorTipoDeLetra(ifstream &archFuente,Declaracion &declaracion,
-                                 char *cadena,char letra,bool sobrecargaDeOp,
-                                 int &posCad,bool &particion,bool &finalizar){
-    // Seleccion de Proceso por Tipo de Letra
-    if(letra == '('){
-        strcat(cadena,"(");
-        strcpy(declaracion.identificador,cadena);
-        declaracion.tipo = 'F';
-        finalizar = true;
-    } else if(letra == ';'){
-        strcat(cadena,";");
-        strcpy(declaracion.identificador,cadena);
-        declaracion.tipo = 'A';
-        finalizar = true;
-    } else if(not sobrecargaDeOp and letra == '='){
-        strcat(cadena," =");
-        strcpy(declaracion.identificador,cadena);
-        declaracion.tipo = 'A';
-        finalizar = true;
-    } else if(not sobrecargaDeOp and esElemento(letra,modificadores)){
-        if(esKeyWord(cadena))
-            concatenarNuevoElemento(declaracion.keyWord,cadena,'K');
-        else if(posCad > 0) darWarning('P',"'Declaracion'");
-        archFuente.unget();
-        agregarProximosModificadores(archFuente,declaracion.keyWord);
-        posCad = -1;
-    } else if(esAgrupador(letra,0)){
-        cadena[posCad++] = letra;
-        letra = obtenerAgrupadorInverso(letra);
-        almacenarHastaDelimitador(archFuente,cadena,letra,posCad);
-        posCad--;
-    } else{
-        if(particion) darWarning('P',"'Declaracion'");
-        else cadena[posCad] = letra;
-    }
-}
-// Modulo del Proceso de Almacenamiento de Parametros de Funcion
-void obtenerParametros(ifstream &archFuente,Funcion &funcion){
-    // Iterativa del Proceso de Extraccion & Impresion de Parametros
-    for(int p = 0;1;p++){
-        // SubDeclaracion de Variable Auxiliar en Bloque
-        Parametro parametro{};
-        // Procesamiento de Proximos Identificadores de Parametro
-        procesarProximosIdentificadores(archFuente,parametro);
-        // Actualizacion de Datos de Parametro de Funcion
-        parametro.posConjunta = strlen(parametro.keyWord) +
-                                strlen(parametro.identificador);
-        funcion.parametros[p] = parametro;
-        funcion.numParametros++;
-        // Validacion de Fin de Funcion
-        archFuente.unget();
-        if(archFuente.get() == ')') break;
-    }
-}
-// Modulo SOBRECARGADO de Extraccion y Procesamiento de Proximos Identificadores [Variante: Parametros de Funcion]
-void procesarProximosIdentificadores(ifstream &archFuente,Parametro &parametro){
-    // Declaracion de Variables
-    bool particion = false,agrupacion = false,finalizar = false;
-    bool sobrecargaDeOp = false; char letra,cadena[med_ID]{};
-    // Iterativa del Proceso de Identificacion
-    for(int posCad = 0;not finalizar;posCad++){
-        letra = archFuente.get();
-        cadena[posCad] = 0;
-        // Validacion por Delimitado de Cadena
-        if(hayDescarteDeComentario(archFuente,letra) or
-           esElemento(letra,espaciadores)){
-            if(posCad > 0){
-                if(esKeyWord(cadena)){
-                    concatenarNuevoElemento(parametro.keyWord,cadena,'K');
-                    if(strcmp(cadena,"operator") == 0) sobrecargaDeOp = true;
-                    posCad = 0;
-                } else particion = true;
-            } 
-            posCad--;
-        } else{
-            procesamientoPorTipoDeLetra(archFuente,parametro,cadena,letra,
-                                        sobrecargaDeOp,posCad,particion,
-                                        agrupacion,finalizar);
-        }
-    }
-}
-// Modulo SOBRECARGADO de Seleccion de Procesos por Tipo de Letra Obtenida [Variante: Parametro de Funcion]
-void procesamientoPorTipoDeLetra(ifstream &archFuente,Parametro &parametro,
-                                 char *cadena,char letra,bool &sobrecargaDeOp,
-                                 int &posCad,bool &particion,bool &agrupacion,
-                                 bool &finalizar){
-    // Seleccion de Proceso por Tipo de Letra
-    if(letra == ',' or letra == ')'){
-        if(esKeyWord(cadena)){
-            concatenarNuevoElemento(parametro.keyWord,cadena,'K');
-            posCad = 0;
-        } else if(suprimirVariables) posCad = 0;
-        cadena[posCad++] = letra;
-        cadena[posCad] = 0;
-        strcat(parametro.identificador,cadena);
-        finalizar = true;
-    } else if(!sobrecargaDeOp and letra == '='){
-        if(esKeyWord(cadena)){
-            concatenarNuevoElemento(parametro.keyWord,cadena,'K');
-            cadena[0] = 0;
-        } else if(suprimirVariables) cadena[0] = 0;
-        strcat(cadena," = ");
-        strcat(parametro.identificador,cadena);
-        procesarSubOperandos(archFuente,parametro.identificador);
-        finalizar = true;
-    } else if(!sobrecargaDeOp and esElemento(letra,modificadores)){
-        if(esKeyWord(cadena))
-            concatenarNuevoElemento(parametro.keyWord,cadena,'K');
-        else if(posCad > 0) darWarning('P',"'Parametro' de 'Funcion'");
-        archFuente.unget();
-        agregarProximosModificadores(archFuente,parametro.keyWord);
-        posCad = -1;
-    } else if(!sobrecargaDeOp and esAgrupador(letra,0)){
-        if(esKeyWord(cadena)){
-            concatenarNuevoElemento(parametro.keyWord,cadena,'K');
-            posCad = 0;
-        } else if(suprimirVariables) posCad = 0;
-        cadena[posCad++] = letra;
-        letra = obtenerAgrupadorInverso(letra);
-        almacenarHastaDelimitador(archFuente,cadena,letra,posCad);
-        cadena[posCad] = 0;
-        strcat(parametro.identificador,cadena);
-        posCad = -1;
-        particion = true;
-    } else{
-        if(particion or agrupacion) darWarning('P',"'Parametro' de 'Funcion'");
-        else cadena[posCad] = letra;
-        if(esLetra(letra) and sobrecargaDeOp) sobrecargaDeOp = false;
-    }
-}
-// Modulo de Procesamiento de SubElementos de SubAsignacion
-void procesarSubOperandos(ifstream &archFuente,char *identificador){
-    // Declaracion de Variables
-    bool huboDescarte,haySimilares,procesado = false,opValidacion[max_OP]{};
-    int posID = strlen(identificador),posEval = 0,posExacto = -1;
-    char letra,anterior = 0,anteriorDeOp,proximoDeOp;
-    // Iterativa del Procesamiento de Proximos Identificadores de Asignacion [Operando: {Identificador & Operador}]
-    while(1){
-        letra = archFuente.get();
-        haySimilares = false;
-        huboDescarte = hayDescarteEspecial(archFuente,letra);
-        if(not huboDescarte){
-            identificador[posID++] = letra;
-            if(letra == ',' or letra == ')'){
-                identificador[posID] = 0;
-                break;
-            } else if(esAgrupador(letra,0)){
-                procesado = true;
-                if(letra == '(' and (esLetra(anterior) or esNumero(anterior))){
-                    while(1){
-                        procesarSubOperandos(archFuente,identificador);
-                        archFuente.unget();
-                        letra = archFuente.get();
-                        if(letra == ')') break;
-                    }
-                    posID = strlen(identificador);
-                } else {
-                    letra = obtenerAgrupadorInverso(letra);
-                    almacenarHastaDelimitador(archFuente,identificador,letra,
-                                              posID);
-                }
-            } else{
-                for(int posOp=0;operators[posOp].identificador[0];posOp++){
-                    if(opValidacion[posOp] or posEval == 0){
-                        if(operators[posOp].identificador[posEval] == letra){
-                            if(operators[posOp].identificador[posEval+1]=='\0'){
-                                proximoDeOp = archFuente.get();
-                                if(operators[posOp].esAcotable or
-                                   not(esLetra(anteriorDeOp) or
-                                       esLetra(proximoDeOp))) posExacto = posOp;
-                                archFuente.unget();
-                            }
-                            opValidacion[posOp] = true;
-                            haySimilares = true;
-                        } else opValidacion[posOp] == false;
-                    }
-                }
-                posEval++;
-            }
-        }
-        if (not haySimilares){
-            if(posExacto != -1){
-                if(huboDescarte) identificador[posID] = 0;
-                else identificador[--posID] = 0;
-                if(operators[posExacto].esSegmentador){
-                    espaciarOperadorEnCadena(operators[posExacto].identificador,
-                                             identificador,true);
-                    posID += 2;
-                }
-                posExacto = -1;
-                archFuente.unget();
-            } else if(posEval > 1){
-                if(not procesado){
-                    archFuente.unget();
-                    posID--;
-                } else procesado = false;
-            }
-            posEval = 0;
-            anteriorDeOp = letra;
-        }
-        anterior = letra;
-    }
-}
-// Modulo del Proceso de Almacenamiento de Operandos de Asignacion
-void obtenerOperandos(ifstream &archFuente,Asignacion &asignacion){
-    // Proceso de Validacion de Asignacion sin Inicializacion
-    archFuente.unget();
-    if(archFuente.get() == ';') return;
-    // Proceso de Validacion de Agrupacion
-    archFuente>>ws;
-    if(archFuente.get() == '{'){
-        asignacion.esAgrupada = true;
-        asignacion.posApertura += 2;
-    }else archFuente.unget();
-    // Iterativa del Proceso de Almacenamiento de Operandos
-    for(int op = 0;1;op++){
-        // SubDeclaracion de Variable Auxiliar en Bloque
-        Operando operando{};
-        // Procesamiento de Proximo Operando
-        procesarProximosIdentificadores(archFuente,operando);
-        // Actualizacion de Datos de Parametro de Funcion
-        operando.posConjunta = strlen(operando.identificador);
-        asignacion.operandos[op] = operando;
-        asignacion.numOperandos++;
-        // Validacion de Fin de Funcion
-        archFuente.unget();
-        if(archFuente.get() == ';') break;
-    }
-}
-// Modulo SOBRECARGADO de Extraccion y Procesamiento de Proximos Identificadores [Variante: Operandos de Asignacion]
-void procesarProximosIdentificadores(ifstream &archFuente,Operando &operando){
-    // Declaracion de Variables
-    bool huboDescarte,haySimilares,procesado = false,opValidacion[max_OP]{};
-    int posID = 0,posEval = 0,posExacto = -1,posProx;
-    char letra,anterior = 0,anteriorDeOp,proximoDeOp;
-    // Iterativa del Procesamiento de Proximos Identificadores de Asignacion [Operando: {Identificador & Operador}]
-    while(1){
-        letra = archFuente.get();
-        haySimilares = false;
-        huboDescarte = hayDescarteEspecial(archFuente,letra);
-        if(not huboDescarte){
-            operando.identificador[posID++] = letra;
-            if(esElemento(letra,separadores)){
-                operando.posConjunta = strlen(operando.identificador);
-                break;
-            } else if(esAgrupador(letra,0)){
-                procesado = true;
-                if(letra == '(' and (esLetra(anterior) or esNumero(anterior))){
-                    while(1){
-                        procesarSubOperandos(archFuente,operando.identificador);
-                        archFuente.unget();
-                        letra = archFuente.get();
-                        if(letra == ')') break;
-                    }
-                    posID = strlen(operando.identificador);
-                } else {
-                    letra = obtenerAgrupadorInverso(letra);
-                    almacenarHastaDelimitador(archFuente,operando.identificador,
-                                              letra,posID);
-                }
-            } else{
-                for(int posOp=0;operators[posOp].identificador[0];posOp++){
-                    if(opValidacion[posOp] or posEval == 0){
-                        if(operators[posOp].identificador[posEval] == letra){
-                            if(operators[posOp].identificador[posEval+1]=='\0'){
-                                proximoDeOp = archFuente.get();
-                                if(operators[posOp].esAcotable or
-                                   not(esLetra(anteriorDeOp) or
-                                       esLetra(proximoDeOp))) posExacto = posOp;
-                                archFuente.unget();
-                            }
-                            opValidacion[posOp] = true;
-                            haySimilares = true;
-                        } else opValidacion[posOp] == false;
-                    }
-                }
-                posEval++;
-            }
-        }
-        if (not haySimilares){
-            if(posExacto != -1){
-                if(huboDescarte) operando.identificador[posID] = 0;
-                else operando.identificador[--posID] = 0;
-                archFuente.unget();
-                if(operators[posExacto].esSegmentador){
-                    espaciarOperadorEnCadena(operators[posExacto].identificador,
-                                             operando.identificador,false);
-                    break;
-                } else posExacto = -1;
-            } else if(posEval > 1){
-                if(not procesado){
-                    archFuente.unget();
-                    posID--;
-                } else procesado = false;
-            }
-            posEval = 0;
-            anteriorDeOp = letra;
-        }
-        anterior = letra;
-    }
-}
-// Modulo de Emision de Errores Comunes
-void darWarning(char warningID,const char *reason){
-    switch (warningID){
-        case 'A':   // A -> Archive Aperture
-            cout<<endl<<setw((tamLinea+17)/2)<<"[ ERROR DE APERTURA ]"<<endl;
-            cout<<"No se encontro el archivo '"<<reason<<"' en el directorio.";
-            cout<<endl<<endl<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Verificar la ruta del archivo."<<endl;
-            cout<<"   [B] Verificar el nombre del archivo ingresado."<<endl;
-            cout<<"   [C] Verificar si se agrego la extension del archivo.";
-            cout<<endl;
-            break;
-        case 'E':   // E -> Empty
-            cout<<endl<<setw((tamLinea+20)/2)<<"[ SIN RESULTADOS ]"<<endl;
-            cout<<endl<<"No existe error como tal.."<<endl;
-            cout<<"Esto solo signifca que no hay nada para convertir."<<endl;
-            cout<<endl<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Activar alguno de los controladores de muestra.";
-            cout<<endl<<"   [B] Editar el archivo fuente."<<endl;
-            return;
-        case 'L':   // L -> Limit
-            cout<<endl<<setw((tamLinea+23)/2)<<"[ SIN AJUSTE A LIMITE ]"<<endl;
-            cout<<endl<<"No existe error como tal.."<<endl;
-            cout<<"No obstante, fue imposible acomodar algunas declaraciones";
-            cout<<endl<<"respecto al margen de pagina ['"<<limitePorMargen;
-            cout<<"']. Por ello, se"<<endl<<"ignoro el ajuste hacia ";
-            cout<<"margen en estas declaraciones."<<endl;
-            cout<<"Primera Ubicacion: "<<reason<<endl<<endl;
-            cout<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Incrementar el limite de margen."<<endl;
-            cout<<"   [B] Editar el archivo Fuente"<<endl;
-            cout<<"   [C] Desactivar el controlador de ajuste a margen."<<endl;
-            return;
-        case 'O':   // O -> Order
-            cout<<endl<<setw((tamLinea+22)/2)<<"ERROR POR ORDENAMIENTO";
-            cout<<endl<<endl<<"El tipo de ordenamiento '";
-            cout<<reason<<"' definido en el controlador es ";
-            cout<<endl<<"invalido."<<endl<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"[A] Modificar el valor del controlador de tipo de";
-            cout<<endl<<"    ordenamiento a alguno de los tipos predefinidos:";
-            cout<<endl<<"    ['A'] Ascendente | ['C'] Consecuente | ";
-            cout<<"['D'] Descendente"<<endl;
-            cout<<"    Recordar que la secuencia debe ser de unicamente"<<endl;
-            cout<<"    '3' caracteres, y que la posicion de cada criterio de";
-            cout<<"ordenamiento es:"<<endl;
-            cout<<"        {Tipo de Declaracion}{KeyWords}{Identificadores}";
-            cout<<endl<<"    Por ejemplo, con la secuencia 'ADA' el ";
-            cout<<"ordenamiento sería:"<<endl;
-            cout<<"    - Ascendente por Tipo de Declaracion"<<endl;
-            cout<<"    - Descendente por KeyWord"<<endl;
-            cout<<"    - Ascendente por Identificador"<<endl;
-            break;
-        case 'P':   // P -> Partition
-            cout<<endl<<setw((tamLinea+23)/2)<<"[ ERROR POR PARTICION ]"<<endl;
-            cout<<endl<<"Se ha detectado la partición de un identificador.";
-            cout<<endl<<"Ubicacion: "<<reason<<endl<<endl;
-            cout<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Agregar una palabra clave faltante en el";
-            cout<<" diccionario"<<endl<<"       respectivo."<<endl;
-            cout<<"   [B] Editar el archivo fuente."<<endl;
-            break;
-        case 'S':   // S -> Soon
-            cout<<endl<<setw((tamLinea+15)/2)<<"[ COMING SOON ]"<<endl;
-            cout<<"Has descubierto una funcionalidad que aun se esta ";
-            cout<<"preparando.. * fallece *"<<endl;
-            break;
-    }
-    exit(1);
 }
