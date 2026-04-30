@@ -18,9 +18,6 @@
 #include <QScrollArea>
 #include <QDialogButtonBox>
 
-#include <fstream>
-using namespace std;
-
 void initGUI() {
     QWidget *ventana = new QWidget();
     ventana->setWindowTitle("HeaderConverter");
@@ -135,7 +132,7 @@ void initGUI() {
 
             if (count < max_KW) nuevasKeywords[count].identificador[0] = '\0';
 
-            actualizarListaDePalabrasClave(nuevasKeywords);
+            actualizarArchivoDePalabrasClave(nuevasKeywords);
             dialogo->accept();
         });
 
@@ -316,7 +313,7 @@ void initGUI() {
 
             if (count < max_OP) operadoresActualizados[count].identificador[0] = '\0';
 
-            actualizarListaDeOperadores(operadoresActualizados);
+            actualizarArchivoDeOperadores(operadoresActualizados);
             dialogo->accept();
         });
 
@@ -506,7 +503,7 @@ void initGUI() {
 
     // cargar input
     {
-        ifstream src = abrirArchivo_IFS("../resources/CodeSource.txt");
+        ifstream src = abrirArchivo_IFS("../resources/Source.txt");
         string contenido((istreambuf_iterator<char>(src)), istreambuf_iterator<char>());
         textoEntrada->setText(QString::fromStdString(contenido));
         src.close();
@@ -536,7 +533,7 @@ void initGUI() {
 
     // cargar output
     {
-        ifstream res = abrirArchivo_IFS("../resources/HeaderConversion.txt");
+        ifstream res = abrirArchivo_IFS("../resources/Conversion.txt");
         string contenido((istreambuf_iterator<char>(res)), istreambuf_iterator<char>());
         textoSalida->setText(QString::fromStdString(contenido));
         res.close();
@@ -574,7 +571,7 @@ void initGUI() {
     // =========================
     QObject::connect(botonConvertir, &QPushButton::clicked, [=]() {
 
-        ofstream src = abrirArchivo_OFS("../resources/CodeSource.txt");
+        ofstream src = abrirArchivo_OFS("../resources/Source.txt");
         src << textoEntrada->toPlainText().toStdString();
         src.close();
 
@@ -582,37 +579,24 @@ void initGUI() {
         nuevoPF.ajustarPorMargen = chkMargen->isChecked();
         nuevoPF.limitePorMargen = inputMargen->text().toInt();
         nuevoPF.ordenarDeclaraciones = chkOrdenar->isChecked();
-        strcpy(nuevoPF.criteriosDeOrdenamiento,
-               comboCriterios->currentText().toStdString().c_str());
+        strcpy(nuevoPF.criteriosDeOrdenamiento, comboCriterios->currentText().toStdString().c_str());
         nuevoPF.espaciarSubelementos = chkEspaciar->isChecked();
         nuevoPF.procesarAsignaciones = chkAsignaciones->isChecked();
         nuevoPF.procesarFunciones = chkFunciones->isChecked();
         nuevoPF.suprimirVariables = chkSuprimir->isChecked();
-        nuevoPF.simboloDelimitador =
-            comboDelimitador->currentText().toStdString()[0];
+        nuevoPF.simboloDelimitador = comboDelimitador->currentText().toStdString()[0];
 
-        actualizarFormatoDeProcesamiento(nuevoPF);
+        actualizarArchivoDeFormatoDeProcesamiento(nuevoPF);
         cargarFormatoDeProcesamiento();
-
         cargarListaDePalabrasClave();
         cargarListaDeOperadores();
 
-        // 🔥 LIMPIEZA REAL
-        ofstream clean = abrirArchivo_OFS("../resources/HeaderConversion.txt");
-        clean.close();
-
-        ifstream in = abrirArchivo_IFS("../resources/CodeSource.txt");
-        ofstream out = abrirArchivo_OFS("../resources/HeaderConversion.txt");
-
-        HeaderConversion(in, out);
-
-        in.close();
-        out.close();
+        headerConversion();
 
         // 🔥 LIMPIAR UI antes de cargar
         textoSalida->clear();
 
-        ifstream res = abrirArchivo_IFS("../resources/HeaderConversion.txt");
+        ifstream res = abrirArchivo_IFS("../resources/Conversion.txt");
         string contenido((istreambuf_iterator<char>(res)), istreambuf_iterator<char>());
         textoSalida->setText(QString::fromStdString(contenido));
         res.close();

@@ -12,19 +12,193 @@
 using namespace std;
 #include "converter.h"
 
-                      /* - / Funciones en 'main()' / - */
+                      /* - / Funciones Principales / - */
 
+// Modulo de actualizacion de archivo de palabras clave
+void actualizarArchivoDePalabrasClave(Keyword *palabrasClave) {
+    // Declaracion & Inicializacion de variables
+    bool kwRepetido;
+    int cantNuevos = 0, cantFinales = 0;
+    Keyword palabrasClaveFinales[max_KW]{};
+    // Medicion de lista nueva
+    while (palabrasClave[cantNuevos].identificador[0]) cantNuevos++;
+    // Exclusion de repetidos
+    for (int i = 0; i < cantNuevos && cantFinales < max_KW; i++) {
+        kwRepetido = false;
+        for (int j = 0; j < cantFinales; j++) {
+            if (strcmp(palabrasClave[i].identificador, palabrasClaveFinales[j].identificador) == 0) {
+                kwRepetido = true;
+                break;
+            }
+        }
+        if(!kwRepetido) {
+            strcpy(palabrasClaveFinales[cantFinales].identificador, palabrasClave[i].identificador);
+            cantFinales++;
+        }
+    }
+    // Apertura de archivo de salida
+    ofstream archSalida = abrirArchivo_OFS("../resources/Keywords.csv");
+    // Actualizacion de archivo de palabras clave
+    for (int i = 0; i < cantFinales; i++) archSalida<<palabrasClaveFinales[i].identificador<<endl;
+    // Cierre de archivo de salida
+    archSalida.close();
+}
+// Modulo de carga de lista de palabras clave
+void cargarListaDePalabrasClave() {
+    // Apertura de archivo de entrada
+    ifstream archEntrada = abrirArchivo_IFS("../resources/Keywords.csv");
+    // Inicializacion de variables
+    int cantKw = 0;
+    char cadAux[med_KW]{};
+    // Carga de lista de palabras clave
+    while (1) {
+        archEntrada>>cadAux;
+        if (archEntrada.eof()) break;
+        strcpy(keywords[cantKw].identificador, cadAux);
+        cantKw++;
+    }
+    // Validacion de delimitacion de lista
+    if (cantKw < max_KW) keywords[cantKw].identificador[0] = 0;
+    // Cierre de archivo de entrada
+    archEntrada.close();
+}
+// Modulo de actualizacion de archivo de operadores
+void actualizarArchivoDeOperadores(Operator *operadores) {
+    // Declaracion & Inicializacion de variables
+    int cantArchivados = 0;
+    char cadAux[med_OP]{};
+    Operator operadoresArchivados[max_OP]{};
+    // Apertura de archivo de entrada
+    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
+    // Lectura de operadores archivados
+    while (1) {
+        archEntrada.getline(cadAux, med_OP, ',');
+        if(archEntrada.eof()) break;
+        strcpy(operadoresArchivados[cantArchivados].identificador, cadAux);
+        archEntrada.getline(cadAux, med_OP, ',');
+        operadoresArchivados[cantArchivados].esAcotable = (strcmp(cadAux, "true") == 0);
+        archEntrada.getline(cadAux, med_OP);
+        operadoresArchivados[cantArchivados].esSegmentador = (strcmp(cadAux, "true") == 0);
+        cantArchivados++;
+    }
+    // Cierre de archivo de entrada
+    archEntrada.close();
+    // Actualizacion de operadores
+    for (int i = 0; i < cantArchivados; i++) {
+        for (int j = 0; operadores[j].identificador[0]; j++) {
+            if (strcmp(operadoresArchivados[i].identificador, operadores[j].identificador) == 0) {
+                operadoresArchivados[i].esAcotable = operadores[j].esAcotable;
+                operadoresArchivados[i].esSegmentador = operadores[j].esSegmentador;
+            }
+        }
+    }
+    // Apertura de archivo de salida
+    ofstream archSalida = abrirArchivo_OFS("../resources/Operators.csv");
+    // Actualizacion de archivo de operadores
+    for (int i = 0; i < cantArchivados; i++) {
+        archSalida<<operadoresArchivados[i].identificador<<",";
+        archSalida<<(operadoresArchivados[i].esAcotable ? "true" : "false")<<",";
+        archSalida<<(operadoresArchivados[i].esSegmentador ? "true" : "false")<<endl;
+    }
+    // Cierre de archivo de salida
+    archSalida.close();
+}
+// Modulo de carga de lista de operadores
+void cargarListaDeOperadores() {
+    // Apertura de archivo de entrada
+    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
+    // Inicializacion de variables
+    int posOp = 0;
+    char cadAux[med_OP]{};
+    // Carga de lista de operadores
+    while (1) {
+        archEntrada.getline(cadAux, med_OP, ',');
+        if (archEntrada.eof()) break;
+        strcpy(operators[posOp].identificador, cadAux);
+        archEntrada.getline(cadAux, med_OP, ',');
+        operators[posOp].esAcotable = (strcmp(cadAux, "true") == 0);
+        archEntrada>>cadAux;
+        operators[posOp].esSegmentador = (strcmp(cadAux, "true") == 0);
+        archEntrada>>ws;
+        posOp++;
+    }
+    // Cierre de archivo de entrada
+    archEntrada.close();
+}
+// Modulo de actualizacion de archivo de formato de procesamiento
+void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento) {
+    // Apertura de archivo de salida
+    ofstream archSalida = abrirArchivo_OFS("../resources/ProcessingFormat.csv");
+    // Actualizacion de formato de procesamiento
+    archSalida<<"adjustMargin,"<<(formatoDeProcesamiento.ajustarPorMargen ? "true" : "false")<<endl;
+    archSalida<<"marginLimit,"<<formatoDeProcesamiento.limitePorMargen<<endl;
+    archSalida<<"sortDeclarations,"<<(formatoDeProcesamiento.ordenarDeclaraciones ? "true" : "false")<<endl;
+    archSalida<<"sortingCriteria,"<<formatoDeProcesamiento.criteriosDeOrdenamiento<<endl;
+    archSalida<<"spaceSubelements,"<<(formatoDeProcesamiento.espaciarSubelementos ? "true" : "false")<<endl;
+    archSalida<<"processAssignments,"<<(formatoDeProcesamiento.procesarAsignaciones ? "true" : "false")<<endl;
+    archSalida<<"processFunctions,"<<(formatoDeProcesamiento.procesarFunciones ? "true" : "false")<<endl;
+    archSalida<<"suppressVariables,"<<(formatoDeProcesamiento.suprimirVariables ? "true" : "false")<<endl;
+    archSalida<<"delimiterSymbol,"<<formatoDeProcesamiento.simboloDelimitador<<endl;
+    // Cierre de archivo de salida
+    archSalida.close();
+}
+// Modulo de carga de formato de procesamiento
+void cargarFormatoDeProcesamiento() {
+    // Apertura de archivo de entrada
+    ifstream archEntrada = abrirArchivo_IFS("../resources/ProcessingFormat.csv");
+    // Inicializacion de variables
+    char cadAtributo[med_ID]{}, cadValor[med_OP]{};
+    pf.ajustarPorMargen = true;
+    pf.limitePorMargen = 80;
+    pf.ordenarDeclaraciones = true;
+    strcpy(pf.criteriosDeOrdenamiento, "AAA");
+    pf.espaciarSubelementos = true;
+    pf.procesarAsignaciones = true;
+    pf.procesarFunciones = true;
+    pf.suprimirVariables = false;
+    pf.simboloDelimitador = ';';
+    // Carga de formato de procesamiento
+    while (1) {
+        archEntrada.getline(cadAtributo, med_ID, ',');
+        if(archEntrada.eof()) break;
+        archEntrada.getline(cadValor, med_OP);
+        if (strcmp(cadAtributo, "adjustMargin") == 0) {
+            pf.ajustarPorMargen = (strcmp(cadValor, "true") == 0);
+        } else if (strcmp(cadAtributo, "marginLimit") == 0) {
+            pf.limitePorMargen = atoi(cadValor);
+        } else if (strcmp(cadAtributo, "sortDeclarations") == 0) {
+            pf.ordenarDeclaraciones = (strcmp(cadValor, "true") == 0);
+        } else if (strcmp(cadAtributo, "sortingCriteria") == 0) {
+            strcpy(pf.criteriosDeOrdenamiento, cadValor);
+        } else if (strcmp(cadAtributo, "spaceSubelements") == 0) {
+            pf.espaciarSubelementos = (strcmp(cadValor, "true") == 0);
+        } else if (strcmp(cadAtributo, "processAssignments") == 0) {
+            pf.procesarAsignaciones = (strcmp(cadValor, "true") == 0);
+        } else if (strcmp(cadAtributo, "processFunctions") == 0) {
+            pf.procesarFunciones = (strcmp(cadValor, "true") == 0);
+        } else if (strcmp(cadAtributo, "suppressVariables") == 0) {
+            pf.suprimirVariables = (strcmp(cadValor, "true") == 0);
+        } else if (strcmp(cadAtributo, "delimiterSymbol") == 0) {
+            pf.simboloDelimitador = cadValor[0];
+        }
+    }
+    // Cierre de archivo de entrada
+    archEntrada.close();
+}
 // Modulo de conversion de archivo
-void HeaderConversion(ifstream &archOrigen, ofstream &archDestino){
-    // Proceso de conversion
+void headerConversion() {
+    // Apertura de archivos de entrada y salida
+    ifstream archOrigen = abrirArchivo_IFS("../resources/Source.txt");
+    ofstream archDestino = abrirArchivo_OFS("../resources/Conversion.txt");
+    // Proceso de conversion de archivo
     while(1){
-        // Inicializacion de variables base de declaracion
+        // Inicializacion de variables base para declaracion
         char palabraClave[med_KW]{}, identificador[med_ID]{}, tipo = 0;
         // Busqueda y almacenamiento de proxima palabra clave
         almacenarProximaPalabraClave(archOrigen, palabraClave);
         // Validacion de fin de archivo
         if(archOrigen.eof()) break;
-        // Procesamiento de proximos identificadores de declaracion
+        // Procesamiento de proximos identificadores para declaracion
         procesarProximosIdentificadores(archOrigen, palabraClave, identificador, tipo);
         // Inicializacion de nueva declaracion
         Declaration declaracion {obtenerDinamicoExacto(palabraClave), obtenerDinamicoExacto(identificador), tipo};
@@ -33,11 +207,14 @@ void HeaderConversion(ifstream &archOrigen, ofstream &archDestino){
     }
     // Impresion de lista de declaraciones
     imprimirListaDeDeclaraciones(archDestino);
-    // Limpiar lista de declaraciones
+    // Limpieza de lista de declaraciones
     limpiarListaDeDeclaraciones();
+    // Cierre de archivos de entrada y salida
+    archOrigen.close();
+    archDestino.close();
 }
 
-                      /* - / Funciones Principales / - */
+                      /* - / Funciones Secundarias / - */
 
 // Modulo de busqueda y almacenamiento de proxima palabra clave
 void almacenarProximaPalabraClave(ifstream &archOrigen, char *palabraClave){
@@ -159,7 +336,7 @@ void procesarSubElementosDeDeclaracion(ifstream &archOrigen, Declaration &declar
     }
 }
 
-                      /* - / Funciones Secundarias / - */
+                      /* - / Funciones Derivadas / - */
 
 // Modulo de almacenamiento de parametros de funcion
 void almacenarParametrosDeFuncion(ifstream &archOrigen, Function &funcion){
@@ -207,7 +384,7 @@ void almacenarOperandosDeAsignacion(ifstream &archOrigen, Assignment &asignacion
     }
 }
 
-                       /* - / Funciones Derivadas / - */
+                        /* - / Funciones SubDerivadas / - */
 
 // Modulo de procesamiento de identificadores de parametro
 void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro){
@@ -390,13 +567,14 @@ bool hayDescarteDeComentario(ifstream &archOrigen, char letra){
             return false;
         }
         return true;
-    } else return false;
+    }
+    return false;
 }
 // Modulo de retorno de agrupador inverso
 char obtenerAgrupadorInverso(char simbolo) {
     for (int i = 0; agrupadores[i][0]; i++){
         if (agrupadores[i][0] == simbolo) return agrupadores[i][1];
-        else if (agrupadores[i][1] == simbolo) return agrupadores[i][0];
+        if (agrupadores[i][1] == simbolo) return agrupadores[i][0];
     }
     return 0;
 }
@@ -472,9 +650,10 @@ void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimita
         }
     }
 }
-// Modulo de Extraccion de Proximos Modificadores de Palabra Clave
+// Modulo almacenamiento de proximos modificadores de palabra clave
 void almacenarProximosModificadores(ifstream &archOrigen, char *cadena){
-    int medida = strlen(cadena); char letra;
+    int medida = strlen(cadena);
+    char letra;
     for (int i = medida;1;i++){
         archOrigen>>ws;
         letra = archOrigen.get();
@@ -487,9 +666,9 @@ void almacenarProximosModificadores(ifstream &archOrigen, char *cadena){
         cadena[i] = letra;
     }
 }
-// Modulo De Separacion de Operador e Identificador
+// Modulo separacion de operador y operando en cadena
 void espaciarOperadorEnCadena(const char *op,char *cad,bool espaciarAlFinal){
-    int medOperador = strlen(op),posCad = strlen(cad) - medOperador;
+    int medOperador = strlen(op), posCad = strlen(cad) - medOperador;
     cad[posCad++] = ' ';
     cad[posCad] = 0;
     strcat(cad,op);
@@ -499,72 +678,72 @@ void espaciarOperadorEnCadena(const char *op,char *cad,bool espaciarAlFinal){
 void darWarning(char warningID,const char *reason = ""){
     switch (warningID){
         case 'A':   // A -> Archive Aperture
-            cout<<"[ ERROR DE APERTURA ]"<<endl;
-            cout<<"No se encontro el archivo '"<<reason<<"' en el directorio.";
-            cout<<endl<<endl<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Verificar la ruta del archivo."<<endl;
-            cout<<"   [B] Verificar el nombre del archivo ingresado."<<endl;
-            cout<<"   [C] Verificar si se agrego la extension del archivo.";
-            cout<<endl;
+            // cout<<"[ ERROR DE APERTURA ]"<<endl;
+            // cout<<"No se encontro el archivo '"<<reason<<"' en el directorio.";
+            // cout<<endl<<endl<<"[#] Acciones recomendadas:"<<endl;
+            // cout<<"   [A] Verificar la ruta del archivo."<<endl;
+            // cout<<"   [B] Verificar el nombre del archivo ingresado."<<endl;
+            // cout<<"   [C] Verificar si se agrego la extension del archivo.";
+            // cout<<endl;
             break;
         case 'E':   // E -> Empty
-            cout<<"[ SIN RESULTADOS ]"<<endl;
-            cout<<endl<<"No existe error como tal.."<<endl;
-            cout<<"Esto solo signifca que no hay nada para convertir."<<endl;
-            cout<<endl<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Activar alguno de los controladores de muestra.";
-            cout<<endl<<"   [B] Editar el archivo fuente."<<endl;
-            return;
+            // cout<<"[ SIN RESULTADOS ]"<<endl;
+            // cout<<endl<<"No existe error como tal.."<<endl;
+            // cout<<"Esto solo signifca que no hay nada para convertir."<<endl;
+            // cout<<endl<<"[#] Acciones recomendadas:"<<endl;
+            // cout<<"   [A] Activar alguno de los controladores de muestra.";
+            // cout<<endl<<"   [B] Editar el archivo fuente."<<endl;
+            break;
         case 'L':   // L -> Limit
-            cout<<"[ SIN AJUSTE A LIMITE ]"<<endl;
-            cout<<endl<<"No existe error como tal.."<<endl;
-            cout<<"No obstante, fue imposible acomodar algunas declaraciones";
-            cout<<endl<<"respecto al margen de pagina ['"<<pf.limitePorMargen;
-            cout<<"']. Por ello, se"<<endl<<"ignoro el ajuste hacia ";
-            cout<<"margen en estas declaraciones."<<endl;
-            cout<<"Primera Ubicacion: "<<reason<<endl<<endl;
-            cout<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Incrementar el limite de margen."<<endl;
-            cout<<"   [B] Editar el archivo Fuente"<<endl;
-            cout<<"   [C] Desactivar el controlador de ajuste a margen."<<endl;
-            return;
+            // cout<<"[ SIN AJUSTE A LIMITE ]"<<endl;
+            // cout<<endl<<"No existe error como tal.."<<endl;
+            // cout<<"No obstante, fue imposible acomodar algunas declaraciones";
+            // cout<<endl<<"respecto al margen de pagina ['"<<pf.limitePorMargen;
+            // cout<<"']. Por ello, se"<<endl<<"ignoro el ajuste hacia ";
+            // cout<<"margen en estas declaraciones."<<endl;
+            // cout<<"Primera Ubicacion: "<<reason<<endl<<endl;
+            // cout<<"[#] Acciones recomendadas:"<<endl;
+            // cout<<"   [A] Incrementar el limite de margen."<<endl;
+            // cout<<"   [B] Editar el archivo Fuente"<<endl;
+            // cout<<"   [C] Desactivar el controlador de ajuste a margen."<<endl;
+            break;
         case 'O':   // O -> Order
-            cout<<"ERROR POR ORDENAMIENTO";
-            cout<<endl<<endl<<"El tipo de ordenamiento '";
-            cout<<reason<<"' definido en el controlador es ";
-            cout<<endl<<"invalido."<<endl<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"[A] Modificar el valor del controlador de tipo de";
-            cout<<endl<<"    ordenamiento a alguno de los tipos predefinidos:";
-            cout<<endl<<"    ['A'] Ascendente | ['C'] Consecuente | ";
-            cout<<"['D'] Descendente"<<endl;
-            cout<<"    Recordar que la secuencia debe ser de unicamente"<<endl;
-            cout<<"    '3' caracteres, y que la posicion de cada criterio de";
-            cout<<"ordenamiento es:"<<endl;
-            cout<<"        {Tipo de Declaration}{KeyWords}{Identificadores}";
-            cout<<endl<<"    Por ejemplo, con la secuencia 'ADA' el ";
-            cout<<"ordenamiento sería:"<<endl;
-            cout<<"    - Ascendente por Tipo de Declaration"<<endl;
-            cout<<"    - Descendente por Keyword"<<endl;
-            cout<<"    - Ascendente por Identificador"<<endl;
+            // cout<<"ERROR POR ORDENAMIENTO";
+            // cout<<endl<<endl<<"El tipo de ordenamiento '";
+            // cout<<reason<<"' definido en el controlador es ";
+            // cout<<endl<<"invalido."<<endl<<"[#] Acciones recomendadas:"<<endl;
+            // cout<<"[A] Modificar el valor del controlador de tipo de";
+            // cout<<endl<<"    ordenamiento a alguno de los tipos predefinidos:";
+            // cout<<endl<<"    ['A'] Ascendente | ['C'] Consecuente | ";
+            // cout<<"['D'] Descendente"<<endl;
+            // cout<<"    Recordar que la secuencia debe ser de unicamente"<<endl;
+            // cout<<"    '3' caracteres, y que la posicion de cada criterio de";
+            // cout<<"ordenamiento es:"<<endl;
+            // cout<<"        {Tipo de Declaration}{KeyWords}{Identificadores}";
+            // cout<<endl<<"    Por ejemplo, con la secuencia 'ADA' el ";
+            // cout<<"ordenamiento sería:"<<endl;
+            // cout<<"    - Ascendente por Tipo de Declaration"<<endl;
+            // cout<<"    - Descendente por Keyword"<<endl;
+            // cout<<"    - Ascendente por Identificador"<<endl;
             break;
         case 'P':   // P -> Partition
-            cout<<"[ ERROR POR PARTICION ]"<<endl;
-            cout<<endl<<"Se ha detectado la partición de un identificador.";
-            cout<<endl<<"Ubicacion: "<<reason<<endl<<endl;
-            cout<<"[#] Acciones recomendadas:"<<endl;
-            cout<<"   [A] Agregar una palabra clave faltante en el";
-            cout<<" diccionario"<<endl<<"       respectivo."<<endl;
-            cout<<"   [B] Editar el archivo fuente."<<endl;
+            // cout<<"[ ERROR POR PARTICION ]"<<endl;
+            // cout<<endl<<"Se ha detectado la partición de un identificador.";
+            // cout<<endl<<"Ubicacion: "<<reason<<endl<<endl;
+            // cout<<"[#] Acciones recomendadas:"<<endl;
+            // cout<<"   [A] Agregar una palabra clave faltante en el";
+            // cout<<" diccionario"<<endl<<"       respectivo."<<endl;
+            // cout<<"   [B] Editar el archivo fuente."<<endl;
             break;
         case 'S':   // S -> Soon
-            cout<<"[ COMING SOON ]"<<endl;
-            cout<<"Has descubierto una funcionalidad que aun se esta ";
-            cout<<"preparando.. * fallece *"<<endl;
+            // cout<<"[ COMING SOON ]"<<endl;
+            // cout<<"Has descubierto una funcionalidad que aun se esta ";
+            // cout<<"preparando.. * fallece *"<<endl;
             break;
     }
     exit(1);
 }
-// Modulo de limpieza de lista de declaraciones en memoria
+// Modulo de limpieza de lista de declaraciones
 void limpiarListaDeDeclaraciones() {
     Node *pAux = ldx.inicial, *pAnt;
     while(pAux != nullptr) {
@@ -593,7 +772,7 @@ void limpiarListaDeDeclaraciones() {
     ldx.inicial = nullptr;
     ldx.final = nullptr;
 }
-// Modulo de Impresion de Lista Simplemente Enlazada de Declaraciones
+// Modulo de impresion de lista de declaraciones
 void imprimirListaDeDeclaraciones(ofstream &archSalida){
     Node *pAux = ldx.inicial;
     while (pAux != nullptr){
@@ -617,7 +796,7 @@ void imprimirListaDeDeclaraciones(ofstream &archSalida){
         pAux = pAux->proximo;
     }
 }
-// Modulo de Impresion de Datos de Funcion en Formato PREDETERMINADO
+// Modulo de impresion de funcion
 void imprimirFuncion(ofstream &archSalida, Function funcion, int posApertura){
     int numParametros = funcion.numParametros;
     int posColumna = posApertura, posConjunta;
@@ -639,7 +818,7 @@ void imprimirFuncion(ofstream &archSalida, Function funcion, int posApertura){
     }
     archSalida<<pf.simboloDelimitador<<endl;
 }
-// Modulo de Impresion de Datos de Assignment en Formato PREDETERMINADO
+// Modulo de impresion de asignacion
 void imprimirAsignacion(ofstream &archSalida,Assignment asignacion, int posApertura){
     int numOperandos = asignacion.numOperandos;
     int posColumna = posApertura, posConjunta;
@@ -666,7 +845,7 @@ void imprimirAsignacion(ofstream &archSalida,Assignment asignacion, int posApert
     }
     archSalida<<endl;
 }
-// Modulo de Validacion y Ejecucion de Ajuste Hacia Margen
+// Modulo de ajuste por margen
 bool seAjustaPorMargen(ofstream &archSalida,int posApertura,int posConjunta,
                        int &posColumna){
     if(pf.ajustarPorMargen and posColumna + posConjunta > pf.limitePorMargen){
@@ -677,7 +856,7 @@ bool seAjustaPorMargen(ofstream &archSalida,int posApertura,int posConjunta,
     posColumna += posConjunta;
     return false;
 }
-// Modulo de Insercion Ordenada de Declaration en Lista Simplemente Enlazada
+// Modulo de insercion de ordenada de declaracion en lista
 void insertarDeclaracionEnLista(Declaration declaracion){
     Node *pAux = ldx.inicial, *pAnt = pAux, *pNuevo = new Node {new Declaration {declaracion}, nullptr};
     if(ldx.inicial == nullptr){
@@ -706,7 +885,7 @@ void insertarDeclaracionEnLista(Declaration declaracion){
         }
     }
 }
-// Modulo de Validacion de Insercion de Declaration Antes de Node
+// Modulo de comparacion de declaraciones para insercion
 bool seInsertaAntesDeNodo(Declaration declaracion, Declaration d_Aux){
     int diff_DT,diff_KW,diff_ID;
     diff_DT = declaracion.tipo - d_Aux.tipo;
@@ -735,223 +914,4 @@ bool seInsertaAntesDeNodo(Declaration declaracion, Declaration d_Aux){
         }
     }
     return false;
-}
-
-// =========================
-// 🔹 KEYWORDS
-// =========================
-void cargarListaDePalabrasClave() {
-    ifstream archEntrada = abrirArchivo_IFS("../resources/Keywords.csv");
-
-    int cantKw = 0;
-    char cadAux[med_KW];
-
-    while (cantKw < max_KW) {
-        archEntrada >> cadAux;
-        if (archEntrada.eof()) break;
-
-        strcpy(keywords[cantKw].identificador, cadAux);
-        cantKw++;
-    }
-
-    if (!archEntrada.eof()) darWarning('A');
-
-    if (cantKw < max_KW)
-        keywords[cantKw].identificador[0] = 0;
-
-    archEntrada.close();
-}
-
-bool existeKW(const char *kw, Keyword *lista, int n) {
-    for (int i = 0; i < n; i++) {
-        if (strcmp(kw, lista[i].identificador) == 0) return true;
-    }
-    return false;
-}
-
-void actualizarListaDePalabrasClave(Keyword *palabrasClave) {
-    int numNuevo = 0;
-    while (palabrasClave[numNuevo].identificador[0]) numNuevo++;
-
-    if (numNuevo == 0) return;
-
-    Keyword listaFinal[max_KW];
-    int numFinal = 0;
-
-    for (int i = 0; i < numNuevo && numFinal < max_KW; i++) {
-        if (!existeKW(palabrasClave[i].identificador, listaFinal, numFinal)) {
-            strcpy(listaFinal[numFinal].identificador,
-                   palabrasClave[i].identificador);
-            numFinal++;
-        }
-    }
-
-    ofstream archSalida = abrirArchivo_OFS("../resources/Keywords.csv");
-
-    for (int i = 0; i < numFinal; i++) {
-        archSalida << listaFinal[i].identificador << endl;
-    }
-
-    archSalida.close();
-}
-
-// =========================
-// 🔹 OPERADORES
-// =========================
-void cargarListaDeOperadores() {
-    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
-
-    int posOp = 0;
-    char cadAux[med_OP];
-
-    while (1) {
-        archEntrada.getline(cadAux, med_OP, ',');
-        if (archEntrada.eof()) break;
-
-        strcpy(operators[posOp].identificador, cadAux);
-
-        archEntrada.getline(cadAux, med_OP, ',');
-        operators[posOp].esAcotable = (strcmp(cadAux, "true") == 0);
-
-        archEntrada >> cadAux;
-        operators[posOp].esSegmentador = (strcmp(cadAux, "true") == 0);
-
-        archEntrada >> ws;
-        posOp++;
-    }
-
-    archEntrada.close();
-}
-
-int buscarOperador(const char *id, Operator *ops, int n) {
-    for (int i = 0; i < n; i++) {
-        if (strcmp(id, ops[i].identificador) == 0) return i;
-    }
-    return -1;
-}
-
-void actualizarListaDeOperadores(Operator *operadores) {
-    int numOps = 0;
-    while (operadores[numOps].identificador[0]) numOps++;
-
-    if (numOps == 0) return;
-
-    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
-
-    Operator listaArchivo[max_OP];
-    int numArchivo = 0;
-
-    char id[med_OP];
-    char acotableStr[6], segmentadorStr[6];
-
-    while (archEntrada.getline(id, med_OP, ',')) {
-        archEntrada.getline(acotableStr, 6, ',');
-        archEntrada.getline(segmentadorStr, 6);
-
-        strcpy(listaArchivo[numArchivo].identificador, id);
-        listaArchivo[numArchivo].esAcotable =
-            (strcmp(acotableStr, "true") == 0);
-        listaArchivo[numArchivo].esSegmentador =
-            (strcmp(segmentadorStr, "true") == 0);
-
-        numArchivo++;
-        if (numArchivo >= max_OP) break;
-    }
-
-    archEntrada.close();
-
-    // 🔹 actualizar valores existentes
-    for (int i = 0; i < numArchivo; i++) {
-        int pos = buscarOperador(
-            listaArchivo[i].identificador,
-            operadores,
-            numOps
-        );
-
-        if (pos != -1) {
-            listaArchivo[i].esAcotable = operadores[pos].esAcotable;
-            listaArchivo[i].esSegmentador = operadores[pos].esSegmentador;
-        }
-    }
-
-    ofstream archSalida = abrirArchivo_OFS("../resources/Operators.csv");
-
-    for (int i = 0; i < numArchivo; i++) {
-        archSalida << listaArchivo[i].identificador << ","
-                   << (listaArchivo[i].esAcotable ? "true" : "false") << ","
-                   << (listaArchivo[i].esSegmentador ? "true" : "false")
-                   << endl;
-    }
-
-    archSalida.close();
-}
-
-// =========================
-// 🔹 FORMATO DE PROCESAMIENTO
-// =========================
-void actualizarFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento) {
-    ofstream arch = abrirArchivo_OFS("../resources/ProcessingFormat.csv");
-
-    arch << "adjustMargin," << (formatoDeProcesamiento.ajustarPorMargen ? "true" : "false") << endl;
-    arch << "marginLimit," << formatoDeProcesamiento.limitePorMargen << endl;
-    arch << "sortDeclarations," << (formatoDeProcesamiento.ordenarDeclaraciones ? "true" : "false") << endl;
-    arch << "sortingCriteria," << formatoDeProcesamiento.criteriosDeOrdenamiento << endl;
-    arch << "spaceSubelements," << (formatoDeProcesamiento.espaciarSubelementos ? "true" : "false") << endl;
-    arch << "processAssignments," << (formatoDeProcesamiento.procesarAsignaciones ? "true" : "false") << endl;
-    arch << "processFunctions," << (formatoDeProcesamiento.procesarFunciones ? "true" : "false") << endl;
-    arch << "suppressVariables," << (formatoDeProcesamiento.suprimirVariables ? "true" : "false") << endl;
-    arch << "delimiterSymbol," << formatoDeProcesamiento.simboloDelimitador << endl;
-
-    arch.close();
-}
-
-void cargarFormatoDeProcesamiento() {
-    // 🔹 valores por defecto
-    pf.ajustarPorMargen = true;
-    pf.limitePorMargen = 80;
-    pf.ordenarDeclaraciones = true;
-    strcpy(pf.criteriosDeOrdenamiento, "AAA");
-    pf.espaciarSubelementos = true;
-    pf.procesarAsignaciones = true;
-    pf.procesarFunciones = true;
-    pf.suprimirVariables = false;
-    pf.simboloDelimitador = ';';
-
-    ifstream arch = abrirArchivo_IFS("../resources/ProcessingFormat.csv");
-
-    char atributo[50], valor[50];
-
-    while (arch.getline(atributo, 50, ',')) {
-        arch.getline(valor, 50);
-
-        if (strcmp(atributo, "adjustMargin") == 0) {
-            pf.ajustarPorMargen = (strcmp(valor, "true") == 0);
-        }
-        else if (strcmp(atributo, "marginLimit") == 0) {
-            pf.limitePorMargen = atoi(valor);
-        }
-        else if (strcmp(atributo, "sortDeclarations") == 0) {
-            pf.ordenarDeclaraciones = (strcmp(valor, "true") == 0);
-        }
-        else if (strcmp(atributo, "sortingCriteria") == 0) {
-            strcpy(pf.criteriosDeOrdenamiento, valor);
-        }
-        else if (strcmp(atributo, "spaceSubelements") == 0) {
-            pf.espaciarSubelementos = (strcmp(valor, "true") == 0);
-        }
-        else if (strcmp(atributo, "processAssignments") == 0) {
-            pf.procesarAsignaciones = (strcmp(valor, "true") == 0);
-        }
-        else if (strcmp(atributo, "processFunctions") == 0) {
-            pf.procesarFunciones = (strcmp(valor, "true") == 0);
-        }
-        else if (strcmp(atributo, "suppressVariables") == 0) {
-            pf.suprimirVariables = (strcmp(valor, "true") == 0);
-        }
-        else if (strcmp(atributo, "delimiterSymbol") == 0) {
-            pf.simboloDelimitador = valor[0];
-        }
-    }
-
-    arch.close();
 }

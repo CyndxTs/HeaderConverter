@@ -21,8 +21,6 @@ bool esNumero(char);
 
 bool esPalabraClave(char *);
 
-bool existeKW(const char *, Keyword *, int);
-
 bool hayDescarteDeComentario(ifstream &, char);
 
 bool hayDescarteEspecial(ifstream &, char);
@@ -37,17 +35,15 @@ char *obtenerDinamicoExacto(const char *);
 
 ifstream abrirArchivo_IFS(const char *);
 
-int buscarOperador(const char *, Operator *, int);
-
 ofstream abrirArchivo_OFS(const char *);
 
-void HeaderConversion(ifstream &, ofstream &);
+void headerConversion();
 
-void actualizarFormatoDeProcesamiento(ProcessingFormat);
+void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat);
 
-void actualizarListaDeOperadores(Operator *);
+void actualizarArchivoDeOperadores(Operator *);
 
-void actualizarListaDePalabrasClave(Keyword *);
+void actualizarArchivoDePalabrasClave(Keyword *);
 
 void almacenarHastaDelimitador(ifstream &, char *, char , int &);
 
