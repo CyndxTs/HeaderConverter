@@ -1,2 +1,3 @@
 
-void HeaderConversion(ifstream, ofstream &);
+const int *numVida[18][queso] = dameAlgoRaro('a'*12+2.5-abc, arr[12+';']) or
+                                12 - 1;

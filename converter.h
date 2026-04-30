@@ -11,82 +11,55 @@
 #include <fstream>
 using namespace std;
 
-bool esElemento(char , const char *);
-
-bool esElemento(char , int , const char **);
-
-bool esLetra(char);
-
-bool esNumero(char);
-
-bool esPalabraClave(char *);
-
-bool hayDescarteDeComentario(ifstream &, char);
-
-bool hayDescarteEspecial(ifstream &, char);
-
-bool seAjustaPorMargen(ofstream &, int , int , int &);
-
-bool seInsertaAntesDeNodo(Declaration , Declaration);
-
-char obtenerAgrupadorInverso(char);
-
-char *obtenerDinamicoExacto(const char *);
-
-ifstream abrirArchivo_IFS(const char *);
-
-ofstream abrirArchivo_OFS(const char *);
-
+// Funciones principales
+void actualizarArchivoDePalabrasClave(Keyword *palabrasClave);
+void cargarListaDePalabrasClave();
+void actualizarArchivoDeOperadores(Operator *operadores);
+void cargarListaDeOperadores();
+void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento);
+void cargarFormatoDeProcesamiento();
 void headerConversion();
 
-void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat);
+// Funciones secundarias
+void almacenarProximaPalabraClave(ifstream &archOrigen, char *palabraClave);
+void procesarProximosIdentificadores(ifstream &archOrigen, char *palabraClave, char *identificador, char &tipoDeclaracion);
+void procesarSubElementosDeDeclaracion(ifstream &archOrigen, Declaration &declaracion);
 
-void actualizarArchivoDeOperadores(Operator *);
+// Funciones derivadas
+void almacenarParametrosDeFuncion(ifstream &archOrigen, Function &funcion);
+void almacenarOperandosDeAsignacion(ifstream &archOrigen, Assignment &asignacion);
 
-void actualizarArchivoDePalabrasClave(Keyword *);
+// Funciones subderivadas
+void procesarProximosIdentificadores(ifstream &archOrigen, const Parameter &parametro);
+void procesarProximosIdentificadores(ifstream &archOrigen, const Operand &operando);
 
-void almacenarHastaDelimitador(ifstream &, char *, char , int &);
+// Funciones auxiliares
+ifstream abrirArchivo_IFS(const char *nombArch);
+ofstream abrirArchivo_OFS(const char *nombArch);
+bool esLetra(char simbolo);
+bool esNumero(char simbolo);
+bool esPalabraClave(char *cadena);
+bool esElemento(char simbolo, const char *conjunto);
+bool esElemento(char simbolo, int j, const char **conjunto);
+bool hayDescarteEspecial(ifstream &archOrigen, char letra);
+bool hayDescarteDeComentario(ifstream &archOrigen, char letra);
+char obtenerAgrupadorInverso(char simbolo);
+char *obtenerDinamicoExacto(const char *cadena);
+void concatenarPorTipoDeElemento(char *cadDestino, char *cadOrigen, char tipo);
+void descartarProximosDatosDeDeclaracion(ifstream &archOrigen, char tipo);
+void descartarHastaDelimitador(ifstream &archOrigen, char delimitador);
+void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimitador, int &posCad);
+void almacenarProximosModificadores(ifstream &archOrigen, char *cadena);
+void espaciarOperadorEnCadena(const char *op, char *cad, bool espaciarAlFinal);
+void darWarning(char warningID, const char *reason);
 
-void almacenarOperandosDeAsignacion(ifstream &, Assignment &);
-
-void almacenarParametrosDeFuncion(ifstream &, Function &);
-
-void almacenarProximaPalabraClave(ifstream &, char *);
-
-void almacenarProximosModificadores(ifstream &, char *);
-
-void cargarFormatoDeProcesamiento();
-
-void cargarListaDeOperadores();
-
-void cargarListaDePalabrasClave();
-
-void concatenarPorTipoDeElemento(char *, char *, char);
-
-void darWarning(char , const char *);
-
-void descartarHastaDelimitador(ifstream &, char);
-
-void descartarProximosDatosDeDeclaracion(ifstream &, char);
-
-void espaciarOperadorEnCadena(const char *, char *, bool);
-
-void imprimirAsignacion(ofstream &, Assignment , int);
-
-void imprimirFuncion(ofstream &, Function , int);
-
-void imprimirListaDeDeclaraciones(ofstream &);
-
-void insertarDeclaracionEnLista(Declaration);
-
+// Funciones de lista
 void limpiarListaDeDeclaraciones();
-
-void procesarProximosIdentificadores(ifstream &, char *, char *, char &);
-
-void procesarProximosIdentificadores(ifstream &, Parameter &);
-
-void procesarProximosIdentificadores(ifstream &, Operand &);
-
-void procesarSubElementosDeDeclaracion(ifstream &, Declaration &);
+void imprimirListaDeDeclaraciones(ofstream &archSalida);
+void imprimirFuncion(ofstream &archSalida, Function funcion, int posApertura);
+void imprimirAsignacion(ofstream &archSalida, Assignment asignacion, int posApertura);
+bool seAjustaPorMargen(ofstream &archSalida, int posApertura, int posConjunta, int &posColumna);
+void insertarDeclaracionEnLista(const Declaration &declaracion);
+bool seInsertaAntesDeNodo(const Declaration &declaracion, const Declaration &d_Aux);
 
 #endif //HEADERCONVERTER_CONVERTER_H

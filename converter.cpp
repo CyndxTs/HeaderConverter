@@ -17,14 +17,13 @@ using namespace std;
 // Modulo de actualizacion de archivo de palabras clave
 void actualizarArchivoDePalabrasClave(Keyword *palabrasClave) {
     // Declaracion & Inicializacion de variables
-    bool kwRepetido;
     int cantNuevos = 0, cantFinales = 0;
     Keyword palabrasClaveFinales[max_KW]{};
     // Medicion de lista nueva
     while (palabrasClave[cantNuevos].identificador[0]) cantNuevos++;
     // Exclusion de repetidos
     for (int i = 0; i < cantNuevos && cantFinales < max_KW; i++) {
-        kwRepetido = false;
+        bool kwRepetido = false;
         for (int j = 0; j < cantFinales; j++) {
             if (strcmp(palabrasClave[i].identificador, palabrasClaveFinales[j].identificador) == 0) {
                 kwRepetido = true;
@@ -51,7 +50,7 @@ void cargarListaDePalabrasClave() {
     int cantKw = 0;
     char cadAux[med_KW]{};
     // Carga de lista de palabras clave
-    while (1) {
+    while (true) {
         archEntrada>>cadAux;
         if (archEntrada.eof()) break;
         strcpy(keywords[cantKw].identificador, cadAux);
@@ -71,7 +70,7 @@ void actualizarArchivoDeOperadores(Operator *operadores) {
     // Apertura de archivo de entrada
     ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
     // Lectura de operadores archivados
-    while (1) {
+    while (true) {
         archEntrada.getline(cadAux, med_OP, ',');
         if(archEntrada.eof()) break;
         strcpy(operadoresArchivados[cantArchivados].identificador, cadAux);
@@ -111,7 +110,7 @@ void cargarListaDeOperadores() {
     int posOp = 0;
     char cadAux[med_OP]{};
     // Carga de lista de operadores
-    while (1) {
+    while (true) {
         archEntrada.getline(cadAux, med_OP, ',');
         if (archEntrada.eof()) break;
         strcpy(operators[posOp].identificador, cadAux);
@@ -158,7 +157,7 @@ void cargarFormatoDeProcesamiento() {
     pf.suprimirVariables = false;
     pf.simboloDelimitador = ';';
     // Carga de formato de procesamiento
-    while (1) {
+    while (true) {
         archEntrada.getline(cadAtributo, med_ID, ',');
         if(archEntrada.eof()) break;
         archEntrada.getline(cadValor, med_OP);
@@ -191,7 +190,7 @@ void headerConversion() {
     ifstream archOrigen = abrirArchivo_IFS("../resources/Source.txt");
     ofstream archDestino = abrirArchivo_OFS("../resources/Conversion.txt");
     // Proceso de conversion de archivo
-    while(1){
+    while(true){
         // Inicializacion de variables base para declaracion
         char palabraClave[med_KW]{}, identificador[med_ID]{}, tipo = 0;
         // Busqueda y almacenamiento de proxima palabra clave
@@ -222,7 +221,7 @@ void almacenarProximaPalabraClave(ifstream &archOrigen, char *palabraClave){
     bool KwCoincidentes[med_KW]{};
     int posExacta = -1;
     // Proceso de busqueda y almacenamiento
-    for (int i = 0; 1; i++){
+    for (int i = 0; true; i++){
         bool haySimilares = false;
         char letra = archOrigen.get();
         // Validacion de fin de archivo
@@ -260,7 +259,7 @@ void procesarProximosIdentificadores(ifstream &archOrigen, char *palabraClave, c
     bool particion = false, sobrecargaDeOp = false;
     char cadAux[med_ID]{};
     // Procesamiento de identificadores
-    for(int posCad = 0; 1; posCad++){
+    for(int posCad = 0; true; posCad++){
         char letra = archOrigen.get();
         cadAux[posCad] = 0;
         // Validacion de descarte especial
@@ -341,7 +340,7 @@ void procesarSubElementosDeDeclaracion(ifstream &archOrigen, Declaration &declar
 // Modulo de almacenamiento de parametros de funcion
 void almacenarParametrosDeFuncion(ifstream &archOrigen, Function &funcion){
     // Almacenamiento de parametros de funcion
-    for(int pm = 0; 1; pm++){
+    for(int pm = 0; true; pm++){
         // Inicializacion de nuevo parametro
         Parameter parametro {};
         parametro.palabraClave = new char[med_ID] {};
@@ -368,7 +367,7 @@ void almacenarOperandosDeAsignacion(ifstream &archOrigen, Assignment &asignacion
     if(archOrigen.get() == '{') asignacion.esAgrupada = true;
     else archOrigen.unget();
     // Almacenamiento de operandos de asignacion
-    for(int op = 0; 1; op++){
+    for(int op = 0; true; op++){
         // Inicializacion de nuevo operando
         Operand operando {};
         operando.identificador = new char[med_ID] {};
@@ -387,12 +386,12 @@ void almacenarOperandosDeAsignacion(ifstream &archOrigen, Assignment &asignacion
                         /* - / Funciones SubDerivadas / - */
 
 // Modulo de procesamiento de identificadores de parametro
-void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro){
+void procesarProximosIdentificadores(ifstream &archOrigen, const Parameter &parametro){
     // Declaracion de variables
     bool particion = false;
     char cadAux[med_ID]{};
     // Procesamiento de identificadores
-    for(int posCad = 0; 1; posCad++){
+    for(int posCad = 0; true; posCad++){
         char letra = archOrigen.get();
         cadAux[posCad] = 0;
         // Validacion de descarte especial
@@ -410,7 +409,6 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro)
                     cadAux[posCad++] = letra;
                     cadAux[posCad] = 0;
                     concatenarPorTipoDeElemento(parametro.palabraClave, cadAux, 'K');
-                    posCad = 0;
                 } else {
                     if(pf.suprimirVariables) posCad = 0;
                     cadAux[posCad++] = letra;
@@ -448,13 +446,13 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Parameter &parametro)
     }
 }
 // Modulo de procesamiento de identificadores de operando
-void procesarProximosIdentificadores(ifstream &archOrigen, Operand &operando){
+void procesarProximosIdentificadores(ifstream &archOrigen, const Operand &operando){
     // Declaration de variables
     bool procesado = false, opValidacion[max_OP]{};
     int posID = 0, posEval = 0, posExacto = -1;
-    char anterior = 0, anteriorDeOp, proximoDeOp;
+    char anteriorDeOp = 0, proximoDeOp = 0;
     // Procesamiento de identificadores
-    while(1){
+    while(true){
         char letra = archOrigen.get();
         bool haySimilares = false;
         bool huboDescarte = hayDescarteEspecial(archOrigen,letra);
@@ -464,10 +462,11 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Operand &operando){
                 operando.identificador[posID] = 0;
                 if(letra == '}') strcat(operando.identificador, ";");
                 break;
-            } else if(esElemento(letra, 0, agrupadores)){
+            }
+            if(esElemento(letra, 0, agrupadores)){
                 procesado = true;
                 almacenarHastaDelimitador(archOrigen, operando.identificador, obtenerAgrupadorInverso(letra), posID);
-            } else{
+            } else {
                 for(int posOp=0;operators[posOp].identificador[0];posOp++){
                     if(opValidacion[posOp] or posEval == 0){
                         if(operators[posOp].identificador[posEval] == letra){
@@ -478,20 +477,21 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Operand &operando){
                             }
                             opValidacion[posOp] = true;
                             haySimilares = true;
-                        } else opValidacion[posOp] == false;
+                        } else opValidacion[posOp] = false;
                     }
                 }
                 posEval++;
             }
         }
         if (not haySimilares){
-            if(posExacto != -1){
+            if(posExacto != -1) {
                 if(huboDescarte) operando.identificador[posID] = 0;
                 else operando.identificador[--posID] = 0;
                 archOrigen.unget();
                 if(operators[posExacto].esSegmentador) espaciarOperadorEnCadena(operators[posExacto].identificador, operando.identificador, false);
                 break;
-            } else if(posEval > 1){
+            }
+            if(posEval > 1) {
                 if(not procesado){
                     archOrigen.unget();
                     posID--;
@@ -500,7 +500,6 @@ void procesarProximosIdentificadores(ifstream &archOrigen, Operand &operando){
             posEval = 0;
             anteriorDeOp = letra;
         }
-        anterior = letra;
     }
 }
 
@@ -546,9 +545,9 @@ bool esElemento(char simbolo, int j, const char **conjunto){
 }
 // Modulo validacion y procesamiento de descarte especial
 bool hayDescarteEspecial(ifstream &archOrigen, char letra){
-    if(esElemento(letra, espaciadores)) archOrigen>>ws;
-    else if (hayDescarteDeComentario(archOrigen, letra));
-    else if(letra == '#') while(archOrigen.get() != '\n');
+    if(esElemento(letra, espaciadores)) { archOrigen>>ws; }
+    else if (hayDescarteDeComentario(archOrigen, letra)) { }
+    else if(letra == '#') { while(archOrigen.get() != '\n') { } }
     else return false;
     return true;
 }
@@ -556,10 +555,10 @@ bool hayDescarteEspecial(ifstream &archOrigen, char letra){
 bool hayDescarteDeComentario(ifstream &archOrigen, char letra){
     if(letra == '/'){
         letra = archOrigen.get();
-        if (letra == '/') while (archOrigen.get() != '\n');
+        if (letra == '/') { while (archOrigen.get() != '\n') { } }
         else if (letra == '*') {
-            while (1) {
-                while (archOrigen.get() != '*' and not archOrigen.eof());
+            while (true) {
+                while (archOrigen.get() != '*' and not archOrigen.eof()) {}
                 if (archOrigen.eof() or archOrigen.get() == '/') break;
             }
         } else{
@@ -605,7 +604,7 @@ void descartarProximosDatosDeDeclaracion(ifstream &archOrigen, char tipo){
 // Modulo de descarte de caracteres hasta delimitador
 void descartarHastaDelimitador(ifstream &archOrigen, char delimitador){
     char letra = 0;
-    while (1) {
+    while (true) {
         letra = archOrigen.get();
         if (letra == delimitador or (esElemento(letra, separadores) and !esElemento(delimitador, 1, agrupadores))) break;
         if ((delimitador != 39 and delimitador != '"') and (esElemento(letra, 0, agrupadores) and letra != archOrigen.get())){
@@ -620,7 +619,7 @@ void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimita
     bool existeLetra = false;
     int medContenido = 0;
     char letra = 0;
-    while (1){
+    while (true){
         letra = archOrigen.get();
         if(not hayDescarteDeComentario(archOrigen, letra)){
             if (letra != '\n'){
@@ -653,10 +652,9 @@ void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimita
 // Modulo almacenamiento de proximos modificadores de palabra clave
 void almacenarProximosModificadores(ifstream &archOrigen, char *cadena){
     int medida = strlen(cadena);
-    char letra;
-    for (int i = medida;1;i++){
+    for (int i = medida; true;i++){
         archOrigen>>ws;
-        letra = archOrigen.get();
+        char letra = archOrigen.get();
         if (not esElemento(letra,modificadores)){
             cadena[i] = 0;
             archOrigen.unget();
@@ -676,6 +674,7 @@ void espaciarOperadorEnCadena(const char *op,char *cad,bool espaciarAlFinal){
 }
 // Modulo de Emision de Errores Comunes
 void darWarning(char warningID,const char *reason = ""){
+    /*
     switch (warningID){
         case 'A':   // A -> Archive Aperture
             // cout<<"[ ERROR DE APERTURA ]"<<endl;
@@ -741,6 +740,7 @@ void darWarning(char warningID,const char *reason = ""){
             // cout<<"preparando.. * fallece *"<<endl;
             break;
     }
+    */
     exit(1);
 }
 // Modulo de limpieza de lista de declaraciones
@@ -799,14 +799,13 @@ void imprimirListaDeDeclaraciones(ofstream &archSalida){
 // Modulo de impresion de funcion
 void imprimirFuncion(ofstream &archSalida, Function funcion, int posApertura){
     int numParametros = funcion.numParametros;
-    int posColumna = posApertura, posConjunta;
-    bool existeID, existeMD, separarElementos;
+    int posColumna = posApertura;
     for(int p = 0; p < numParametros; p++){
         Parameter parametro = funcion.parametros[p];
-        existeMD = esElemento(parametro.palabraClave[strlen(parametro.palabraClave) - 1], modificadores);
-        existeID = (strlen(parametro.identificador) > 1 + pf.espaciarSubelementos);
-        separarElementos = existeID and not existeMD;
-        posConjunta = strlen(parametro.palabraClave) + strlen(parametro.identificador);
+        bool existeMD = esElemento(parametro.palabraClave[strlen(parametro.palabraClave) - 1], modificadores);
+        bool existeID = (strlen(parametro.identificador) > 1 + pf.espaciarSubelementos);
+        bool separarElementos = existeID and not existeMD;
+        int posConjunta = strlen(parametro.palabraClave) + strlen(parametro.identificador);
         if(separarElementos) posConjunta++;
         if(p == numParametros - 1) posConjunta++;
         if(seAjustaPorMargen(archSalida,posApertura, posConjunta, posColumna) and p == 0){
@@ -857,7 +856,7 @@ bool seAjustaPorMargen(ofstream &archSalida,int posApertura,int posConjunta,
     return false;
 }
 // Modulo de insercion de ordenada de declaracion en lista
-void insertarDeclaracionEnLista(Declaration declaracion){
+void insertarDeclaracionEnLista(const Declaration &declaracion){
     Node *pAux = ldx.inicial, *pAnt = pAux, *pNuevo = new Node {new Declaration {declaracion}, nullptr};
     if(ldx.inicial == nullptr){
         ldx.inicial = pNuevo;
@@ -886,11 +885,10 @@ void insertarDeclaracionEnLista(Declaration declaracion){
     }
 }
 // Modulo de comparacion de declaraciones para insercion
-bool seInsertaAntesDeNodo(Declaration declaracion, Declaration d_Aux){
-    int diff_DT,diff_KW,diff_ID;
-    diff_DT = declaracion.tipo - d_Aux.tipo;
-    diff_KW = strcmp(declaracion.palabraClave, d_Aux.palabraClave);
-    diff_ID = strcmp(declaracion.identificador, d_Aux.identificador);
+bool seInsertaAntesDeNodo(const Declaration &declaracion, const Declaration &d_Aux){
+    int diff_DT = declaracion.tipo - d_Aux.tipo;
+    int diff_KW = strcmp(declaracion.palabraClave, d_Aux.palabraClave);
+    int diff_ID = strcmp(declaracion.identificador, d_Aux.identificador);
     for (int i = 0;i < 3;i++) {
         switch (pf.criteriosDeOrdenamiento[i]){
             case 'A':
