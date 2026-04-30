@@ -1,9 +1,2 @@
 
-bool soycristiano = true + 1 or 1;
-
-void funcioname(int , const char *&['a'+12], int , char , 
-                const bool ****&[abc(ahsd+5)][12][73]);
-
-int hola(int);
-
-int hola(int , bool &);
+void HeaderConversion(ifstream, ofstream &);

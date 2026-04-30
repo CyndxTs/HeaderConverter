@@ -625,7 +625,7 @@ void imprimirFuncion(ofstream &archSalida, Function funcion, int posApertura){
     for(int p = 0; p < numParametros; p++){
         Parameter parametro = funcion.parametros[p];
         existeMD = esElemento(parametro.palabraClave[strlen(parametro.palabraClave) - 1], modificadores);
-        existeID = (strlen(parametro.identificador) > 1);
+        existeID = (strlen(parametro.identificador) > 1 + pf.espaciarSubelementos);
         separarElementos = existeID and not existeMD;
         posConjunta = strlen(parametro.palabraClave) + strlen(parametro.identificador);
         if(separarElementos) posConjunta++;

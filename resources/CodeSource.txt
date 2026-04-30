@@ -1,69 +1,23 @@
-bool soycristiano = true 
-+ 
 
-1  or1;
-
-
-int hola(int ab = 1){}
-
-int hola(int ab = 1, bool &
-ab = abc['a'][abd(12)]){}
-
-void funcioname(int abc, const char *     
-      
-    & quesocrema['a' + 12] = 73ab, int queso, char booleanoqueso, const bool ** *
- *& terrible[abc(   
-ahsd + 5)][12][  73]) {
-while(1){
-    char letra = archOrigen.get();
-    bool haySimilares = false;
-    bool huboDescarte = hayDescarteEspecial(archOrigen,letra);
-    if(not huboDescarte){
-        operando.identificador[posID++] = letra;
-        if(esElemento(letra, separadores)) {
-            operando.identificador[posID] = 0;
-            if(letra == '}') strcat(operando.identificador, ";");
-            break;
-        } else if(esElemento(letra, 0, agrupadores)){
-            procesado = true;
-            almacenarHastaDelimitador(archOrigen, operando.identificador, obtenerAgrupadorInverso(letra), posID);
-        } else{
-            for(int posOp=0;operators[posOp].identificador[0];posOp++){
-                if(opValidacion[posOp] or posEval == 0){
-                    if(operators[posOp].identificador[posEval] == letra){
-                        if(operators[posOp].identificador[posEval+1]=='\0'){
-                            proximoDeOp = archOrigen.get();
-                            if(operators[posOp].esAcotable or not(esLetra(anteriorDeOp) or esLetra(proximoDeOp))) posExacto = posOp;
-                            archOrigen.unget();
-                        }
-                        opValidacion[posOp] = true;
-                        haySimilares = true;
-                    } else opValidacion[posOp] == false;
-                }
-            }
-            posEval++;
-        }
+// Modulo de conversion de archivo
+void HeaderConversion(ifstream archOrigen, ofstream&archDestino){
+    // Proceso de conversion
+    while(1){
+        // Inicializacion de variables base de declaracion
+        char palabraClave[med_KW]{}, identificador[med_ID]{}, tipo = 0;
+        // Busqueda y almacenamiento de proxima palabra clave
+        almacenarProximaPalabraClave(archOrigen, palabraClave);
+        // Validacion de fin de archivo
+        if(archOrigen.eof()) break;
+        // Procesamiento de proximos identificadores de declaracion
+        procesarProximosIdentificadores(archOrigen, palabraClave, identificador, tipo);
+        // Inicializacion de nueva declaracion
+        Declaration declaracion {obtenerDinamicoExacto(palabraClave), obtenerDinamicoExacto(identificador), tipo};
+        // Procesamiento de subelementos de declaracion
+        procesarSubElementosDeDeclaracion(archOrigen, declaracion);
     }
-    if (not haySimilares){
-        if(posExacto != -1){
-            if(huboDescarte) operando.identificador[posID] = 0;
-            else operando.identificador[--posID] = 0;
-            archOrigen.unget();
-            if(operators[posExacto].esSegmentador) espaciarOperadorEnCadena(operators[posExacto].identificador, operando.identificador, false);
-            break;
-        } else if(posEval > 1){
-            if(not procesado){
-                archOrigen.unget();
-                posID--;
-            } else procesado = false;
-        }
-        posEval = 0;
-        anteriorDeOp = letra;
-    }
-    anterior = letra;
+    // Impresion de lista de declaraciones
+    imprimirListaDeDeclaraciones(archDestino);
+    // Limpiar lista de declaraciones
+    limpiarListaDeDeclaraciones();
 }
-}
-
-
-
-

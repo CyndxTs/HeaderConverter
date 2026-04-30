@@ -1,7 +1,7 @@
 adjustMargin,true
 marginLimit,80
 sortDeclarations,true
-sortingCriteria,ADA
+sortingCriteria,AAA
 spaceSubelements,true
 processAssignments,true
 processFunctions,true
