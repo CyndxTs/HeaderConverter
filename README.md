@@ -246,5 +246,5 @@ void ola(const int *[';']['a'] = 12 + vida(abc[12][12] + 12*15 + 7 + 1));
 
 ## 🛠️ Recursos
 
-- 🖥️ **CLion** — IDE utilizado para escribir y compilar el proyecto en C++.
-- 🧩 **Qt** — Framework utilizado para la interfaz gráfica.
+- 🖥️ **CLion** `2025.2` — IDE utilizado para escribir y compilar el proyecto en C++.
+- 🧩 **Qt** `6.11.0` — Framework utilizado para la realización de la interfaz gráfica.
