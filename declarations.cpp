@@ -7,7 +7,7 @@
 
 #include "declarations.h"
 
-const char *agrupadores[] = {"\"\"", "''", "()", "[]", "{}", 0};
+const char *agrupadores[] = {"\"\"", "''", "()", "[]", "{}", nullptr};
 
 const char espaciadores[] = {' ', '\t', '\n', 0};
 
