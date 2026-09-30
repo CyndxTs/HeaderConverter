@@ -4,10 +4,18 @@
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
+CMakeLists.txt.user
+CMakeUserPresets.json
+compile_commands.json
+.cache/
 
 # CMake
 cmake_install.cmake
 Makefile
+*_autogen/
+.ninja_deps
+.ninja_log
+build.ninja
 
 # Build
 build/
@@ -18,16 +26,22 @@ dist/
 *.dll
 *.so
 *.lib
+*.res
 
 # Bin
 *.exe
 *.out
+
+# Packaging [Resultado de windeployqt e Inno Setup]
+/deploy/
+/Output/
 
 # Temp
 *.log
 *.tmp
 *.cache
 *.dep.inc
+*.autosave
 
 # System
 Thumbs.db

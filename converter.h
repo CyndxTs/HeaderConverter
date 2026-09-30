@@ -7,6 +7,7 @@
 #ifndef HEADERCONVERTER_CONVERTER_H
 #define HEADERCONVERTER_CONVERTER_H
 #include <fstream>
+#include <string>
 using namespace std;
 #include "declarations.h"
 
@@ -37,6 +38,10 @@ void almacenarOperandosDeAsignacion(ifstream &, Assignment &);
 void procesarProximosIdentificadores(ifstream &, const Parameter &);
 
 void procesarProximosIdentificadores(ifstream &, const Operand &);
+
+void fijarCarpetaDeTrabajo(const char *);
+
+string rutaDeRecurso(const char *);
 
 ifstream abrirArchivo_IFS(const char *);
 

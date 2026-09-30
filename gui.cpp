@@ -26,6 +26,10 @@
 #include <QRadioButton>
 #include <QButtonGroup>
 #include <QGridLayout>
+#include <QCoreApplication>
+#include <QStandardPaths>
+#include <QDir>
+#include <QFile>
 
 // Declaracion de constantes
 const int anc_OP = 120;                                     // Ancho de columna 'Operador' en el panel de edicion de operadores.
@@ -36,6 +40,8 @@ const char opcionesDeOrdenamiento[] = {'A', 'C', 'D', 0};   // Tipos de ordenami
 
 // Modulo de inicializacion de interfaz grafica
 void initGUI() {
+    // Preparacion de carpeta de archivos de trabajo
+    prepararCarpetaDeTrabajo();
     // Declaracion & Inicializacion de variables
     FormatControls cf {};
     QTextEdit *t_Entrada = nullptr, *t_Salida = nullptr;
@@ -51,8 +57,8 @@ void initGUI() {
     v_Principal->setLayout(ch_Principal);
     // Carga de estado inicial de controles y textos
     cargarFormatoEnControles(cf);
-    cargarArchivoEnTexto("../resources/Source.txt", t_Entrada);
-    cargarArchivoEnTexto("../resources/Conversion.txt", t_Salida);
+    cargarArchivoEnTexto(rutaDeRecurso("Source.txt").c_str(), t_Entrada);
+    cargarArchivoEnTexto(rutaDeRecurso("Conversion.txt").c_str(), t_Salida);
     // Conexion de boton de conversion
     conectarBotonDeConversion(b_Convertir, t_Entrada, t_Salida, cf);
     // Muestra de ventana principal
@@ -60,6 +66,31 @@ void initGUI() {
 }
 
                       /* - / Funciones Secundarias / - */
+
+// Modulo de preparacion de carpeta de trabajo [AppData del usuario, con copia inicial de valores por defecto]
+void prepararCarpetaDeTrabajo() {
+    // Declaracion & Inicializacion de variables
+    const char *archivos[] = {"Keywords.csv", "Operators.csv", "ProcessingFormat.csv",
+                              "Source.txt", "Conversion.txt", nullptr};
+    QString carpetaTrabajo = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString carpetaDefectos = QCoreApplication::applicationDirPath() + "/../resources";
+    // Creacion de carpeta de trabajo
+    QDir().mkpath(carpetaTrabajo);
+    // Copia de valores por defecto faltantes
+    for (int i = 0; archivos[i]; i++) {
+        QString destino = carpetaTrabajo + "/" + archivos[i];
+        QString origen = carpetaDefectos + "/" + archivos[i];
+        if (QFile::exists(destino)) continue;
+        if (not QFile::copy(origen, destino)) {
+            // Creacion de archivo vacio si no existe valor por defecto
+            QFile archVacio(destino);
+            archVacio.open(QIODevice::WriteOnly);
+            archVacio.close();
+        }
+    }
+    // Definicion de carpeta de trabajo para el conversor
+    fijarCarpetaDeTrabajo(carpetaTrabajo.toLocal8Bit().constData());
+}
 
 // Modulo de creacion de lado izquierdo [Palabras clave, operadores y formato]
 QWidget *crearLadoIzquierdo(QWidget *v_Principal, FormatControls &cf) {
@@ -190,7 +221,7 @@ QGroupBox *crearPanelDeSalida(QTextEdit *&t_Salida) {
 // Modulo de procesamiento de conversion [Boton 'Convert']
 void procesarConversion(QTextEdit *t_Entrada, QTextEdit *t_Salida, const FormatControls &cf) {
     // Actualizacion de archivo fuente
-    ofstream archOrigen = abrirArchivo_OFS("../resources/Source.txt");
+    ofstream archOrigen = abrirArchivo_OFS(rutaDeRecurso("Source.txt").c_str());
     archOrigen<<t_Entrada->toPlainText().toStdString();
     archOrigen.close();
     // Actualizacion de archivo de formato de procesamiento
@@ -204,7 +235,7 @@ void procesarConversion(QTextEdit *t_Entrada, QTextEdit *t_Salida, const FormatC
     bool convertido = headerConversion(aviso);
     // Actualizacion de panel de salida
     t_Salida->clear();
-    cargarArchivoEnTexto("../resources/Conversion.txt", t_Salida);
+    cargarArchivoEnTexto(rutaDeRecurso("Conversion.txt").c_str(), t_Salida);
     // Validacion de conversion cancelada
     if (not convertido) {
         if (aviso.id != 0) {

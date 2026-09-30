@@ -40,6 +40,8 @@ typedef struct {
 
 void initGUI();
 
+void prepararCarpetaDeTrabajo();
+
 QWidget *crearLadoIzquierdo(QWidget *, FormatControls &);
 
 QVBoxLayout *crearLadoDerecho(QTextEdit *&, QTextEdit *&, QPushButton *&);

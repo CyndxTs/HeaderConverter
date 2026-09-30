@@ -9,11 +9,13 @@
 #include <fstream>
 #include <cstring>
 #include <chrono>
+#include <string>
 using namespace std;
 #include "converter.h"
 
 // Declaracion de variables globales
 static chrono::steady_clock::time_point limiteDeConversion;     // Instante limite de la conversion en curso.
+static string carpetaDeTrabajo = "../resources";                // Carpeta de archivos de trabajo [Se redefine al iniciar la interfaz].
 
                       /* - / Funciones Principales / - */
 
@@ -39,7 +41,7 @@ void actualizarArchivoDePalabrasClave(Keyword *palabrasClave) {
         }
     }
     // Apertura de archivo de salida
-    ofstream archSalida = abrirArchivo_OFS("../resources/Keywords.csv");
+    ofstream archSalida = abrirArchivo_OFS(rutaDeRecurso("Keywords.csv").c_str());
     // Actualizacion de archivo de palabras clave
     for (int i = 0; i < cantFinales; i++) archSalida<<palabrasClaveFinales[i].identificador<<endl;
     // Cierre de archivo de salida
@@ -48,7 +50,7 @@ void actualizarArchivoDePalabrasClave(Keyword *palabrasClave) {
 // Modulo de carga de lista de palabras clave
 void cargarListaDePalabrasClave() {
     // Apertura de archivo de entrada
-    ifstream archEntrada = abrirArchivo_IFS("../resources/Keywords.csv");
+    ifstream archEntrada = abrirArchivo_IFS(rutaDeRecurso("Keywords.csv").c_str());
     // Inicializacion de variables
     int cantKw = 0;
     char cadAux[med_KW]{};
@@ -71,7 +73,7 @@ void actualizarArchivoDeOperadores(Operator *operadores) {
     char cadAux[med_OP]{};
     Operator operadoresArchivados[max_OP]{};
     // Apertura de archivo de entrada
-    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
+    ifstream archEntrada = abrirArchivo_IFS(rutaDeRecurso("Operators.csv").c_str());
     // Lectura de operadores archivados
     while (true) {
         archEntrada.getline(cadAux, med_OP, ',');
@@ -95,7 +97,7 @@ void actualizarArchivoDeOperadores(Operator *operadores) {
         }
     }
     // Apertura de archivo de salida
-    ofstream archSalida = abrirArchivo_OFS("../resources/Operators.csv");
+    ofstream archSalida = abrirArchivo_OFS(rutaDeRecurso("Operators.csv").c_str());
     // Actualizacion de archivo de operadores
     for (int i = 0; i < cantArchivados; i++) {
         archSalida<<operadoresArchivados[i].identificador<<",";
@@ -108,7 +110,7 @@ void actualizarArchivoDeOperadores(Operator *operadores) {
 // Modulo de carga de lista de operadores
 void cargarListaDeOperadores() {
     // Apertura de archivo de entrada
-    ifstream archEntrada = abrirArchivo_IFS("../resources/Operators.csv");
+    ifstream archEntrada = abrirArchivo_IFS(rutaDeRecurso("Operators.csv").c_str());
     // Inicializacion de variables
     int posOp = 0;
     char cadAux[med_OP]{};
@@ -130,7 +132,7 @@ void cargarListaDeOperadores() {
 // Modulo de actualizacion de archivo de formato de procesamiento
 void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat formatoDeProcesamiento) {
     // Apertura de archivo de salida
-    ofstream archSalida = abrirArchivo_OFS("../resources/ProcessingFormat.csv");
+    ofstream archSalida = abrirArchivo_OFS(rutaDeRecurso("ProcessingFormat.csv").c_str());
     // Actualizacion de formato de procesamiento
     archSalida<<"adjustMargin,"<<(formatoDeProcesamiento.ajustarPorMargen ? "true" : "false")<<endl;
     archSalida<<"marginLimit,"<<formatoDeProcesamiento.limitePorMargen<<endl;
@@ -147,7 +149,7 @@ void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat formatoDeProcesa
 // Modulo de carga de formato de procesamiento
 void cargarFormatoDeProcesamiento() {
     // Apertura de archivo de entrada
-    ifstream archEntrada = abrirArchivo_IFS("../resources/ProcessingFormat.csv");
+    ifstream archEntrada = abrirArchivo_IFS(rutaDeRecurso("ProcessingFormat.csv").c_str());
     // Inicializacion de variables
     char cadAtributo[med_ID]{}, cadValor[med_OP]{};
     pf.ajustarPorMargen = true;
@@ -190,8 +192,8 @@ void cargarFormatoDeProcesamiento() {
 // Modulo de conversion de archivo [Retorna 'false' si se cancela por superar el tiempo limite o por un 'ConversionWarning']
 bool headerConversion(ConversionWarning &aviso) {
     // Apertura de archivos de entrada y salida
-    ifstream archOrigen = abrirArchivo_IFS("../resources/Source.txt");
-    ofstream archDestino = abrirArchivo_OFS("../resources/Conversion.txt");
+    ifstream archOrigen = abrirArchivo_IFS(rutaDeRecurso("Source.txt").c_str());
+    ofstream archDestino = abrirArchivo_OFS(rutaDeRecurso("Conversion.txt").c_str());
     // Declaracion & Inicializacion de variables
     bool convertido = true;
     aviso.id = 0;
@@ -537,6 +539,14 @@ void procesarProximosIdentificadores(ifstream &archOrigen, const Operand &operan
 
                        /* - / Funciones Auxiliares / - */
 
+// Modulo de definicion de carpeta de archivos de trabajo
+void fijarCarpetaDeTrabajo(const char *carpeta){
+    carpetaDeTrabajo = carpeta;
+}
+// Modulo de obtencion de ruta completa de un archivo de trabajo
+string rutaDeRecurso(const char *nombArch){
+    return carpetaDeTrabajo + "/" + nombArch;
+}
 // Modulo de apertura de archivos 'ifstream'
 ifstream abrirArchivo_IFS(const char *nombArch){
     ifstream archIFS(nombArch, ios::in);
