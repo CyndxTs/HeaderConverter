@@ -1,4 +1,3 @@
-
 /*/
  * Projecto:            HeaderConverter
  * Nombre del Archivo:  converter.h
@@ -23,7 +22,7 @@ void actualizarArchivoDeFormatoDeProcesamiento(ProcessingFormat);
 
 void cargarFormatoDeProcesamiento();
 
-void headerConversion();
+bool headerConversion(ConversionWarning &);
 
 void almacenarProximaPalabraClave(ifstream &, char *);
 
@@ -73,7 +72,11 @@ void almacenarProximosModificadores(ifstream &, char *);
 
 void espaciarOperadorEnCadena(const char *, char *, bool);
 
-void darWarning(char, const char *);
+void darWarning(char, const char * = "");
+
+void iniciarTemporizadorDeConversion();
+
+void validarTiempoDeConversion();
 
 void limpiarListaDeDeclaraciones();
 

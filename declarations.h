@@ -1,4 +1,3 @@
-
 /*/
  * Projecto:            HeaderConverter
  * Nombre del Archivo:  declarations.h
@@ -16,6 +15,7 @@ const int med_OP = 15;                  // Medida máxima de identificador de 'O
 const int max_KW = 60;                  // Cantidad maxima de palabras clave predefinidas.
 const int max_OP = 30;                  // Cantidad maxima de operadores predefinidos.
 const int max_PO = 15;                  // Cantidad máxima de parámetros de 'Funcion' y operandos de 'Asignación'.
+const int lim_CV = 5;                   // Tiempo limite de conversion en segundos.
 
 // Definicion: 'Keyword'
 typedef struct {
@@ -86,6 +86,16 @@ typedef struct {
     bool suprimirVariables;             //  > Cuando se activa, no se mostrarán los identificadores de las variables de los parametros de las funciones en definicion.
     char simboloDelimitador;            //  > Simbolo delimitador en la 'Impresion' de funciones.
 } ProcessingFormat;
+
+// Definicion: 'ConversionTimeout'
+typedef struct {
+} ConversionTimeout;                    // Excepcion lanzada cuando la conversion excede el tiempo limite ['lim_CV'].
+
+// Definicion: 'ConversionWarning'
+typedef struct {
+    char id;                            // Tipo de warning ['A', 'E', 'L', 'O', 'P', 'U'].
+    char razon[med_ID];                 // Detalle del warning [Ubicacion, valor invalido, etc.]
+} ConversionWarning;                    // Excepcion lanzada por 'darWarning' para cancelar la conversion.
 
 // Declaracion de conjuntos predefinidos
 extern const char *agrupadores[];

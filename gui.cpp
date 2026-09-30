@@ -1,3 +1,9 @@
+/*/
+ * Projecto:            HeaderConverter
+ * Nombre del Archivo:  gui.cpp
+ * Autor:               CyndxTs
+/*/
+
 #include "gui.h"
 
 #include <QWidget>
@@ -21,814 +27,754 @@
 #include <QButtonGroup>
 #include <QGridLayout>
 
+// Declaracion de constantes
+const int anc_OP = 120;                                     // Ancho de columna 'Operador' en el panel de edicion de operadores.
+const int anc_SG = 90;                                      // Ancho de columna 'Segmentador' en el panel de edicion de operadores.
+const char opcionesDeOrdenamiento[] = {'A', 'C', 'D', 0};   // Tipos de ordenamiento por eje. [Ascendente, Consecuente, Descendente]
+
+                      /* - / Funciones Principales / - */
+
+// Modulo de inicializacion de interfaz grafica
 void initGUI() {
-    QWidget *ventana = new QWidget();
-    ventana->setWindowTitle("HeaderConverter");
-    ventana->resize(1000, 600);
-
-    auto *layoutPrincipal = new QHBoxLayout();
-
-    // =========================
-    // 🔹 HELPER: MODAL CUSTOM
-    // Sin icono, texto alineado a la izquierda, botón OK centrado
-    // =========================
-    auto mostrarModal = [=](QWidget *parent, const QString &titulo, const QString &texto) {
-        QDialog *modal = new QDialog(parent);
-        modal->setWindowTitle(titulo);
-        modal->setFixedWidth(340);
-        auto *layout = new QVBoxLayout(modal);
-        layout->setSpacing(16);
-        layout->setContentsMargins(18, 18, 18, 14);
-        auto *lbl = new QLabel(texto);
-        lbl->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-        lbl->setWordWrap(true);
-        lbl->setTextFormat(Qt::PlainText);
-        layout->addWidget(lbl);
-        auto *btn = new QPushButton("OK");
-        btn->setFixedWidth(80);
-        auto *layoutBtn = new QHBoxLayout();
-        layoutBtn->addStretch();
-        layoutBtn->addWidget(btn);
-        layoutBtn->addStretch();
-        layout->addLayout(layoutBtn);
-        QObject::connect(btn, &QPushButton::clicked, modal, &QDialog::accept);
-        modal->exec();
-    };
-
-    // =========================
-    // 🔹 IZQUIERDA
-    // =========================
-    auto *layoutIzquierdo = new QVBoxLayout();
-
-    // Keywords
-    auto *grupoKeywords = new QGroupBox("Keywords");
-    auto *layoutKeywords = new QVBoxLayout();
-    auto *btnEditKeywords = new QPushButton("Edit");
-    layoutKeywords->addWidget(btnEditKeywords);
-    grupoKeywords->setLayout(layoutKeywords);
-
-    QObject::connect(btnEditKeywords, &QPushButton::clicked, [=]() {
-        cargarListaDePalabrasClave();
-
-        QDialog *dialogo = new QDialog(ventana);
-        dialogo->setWindowTitle("Edit Keywords");
-        dialogo->setFixedWidth(220);
-        dialogo->resize(220, 450);
-
-        auto *layoutDialogo = new QVBoxLayout(dialogo);
-
-        auto *scrollArea = new QScrollArea();
-        scrollArea->setWidgetResizable(true);
-
-        auto *contenedor = new QWidget();
-        auto *layoutLista = new QVBoxLayout(contenedor);
-        layoutLista->setAlignment(Qt::AlignTop);
-        scrollArea->setWidget(contenedor);
-
-        for (int i = 0; keywords[i].identificador[0]; i++) {
-            auto *fila = new QHBoxLayout();
-            auto *input = new QLineEdit(QString::fromLocal8Bit(keywords[i].identificador));
-            input->setReadOnly(true);
-            input->setMaximumWidth(150);
-            auto *btnEliminar = new QPushButton("x");
-            btnEliminar->setFixedWidth(30);
-
-            QObject::connect(btnEliminar, &QPushButton::clicked, [=]() {
-                QLayoutItem *item;
-                while ((item = fila->takeAt(0)) != nullptr) {
-                    if (item->widget()) item->widget()->deleteLater();
-                    delete item;
-                }
-                layoutLista->removeItem(fila);
-                delete fila;
-            });
-
-            fila->addWidget(input);
-            fila->addWidget(btnEliminar);
-            layoutLista->addLayout(fila);
-        }
-
-        auto *btnAgregar = new QPushButton("+ Add keyword");
-        QObject::connect(btnAgregar, &QPushButton::clicked, [=]() {
-            // Contar cuántas filas hay actualmente en la lista
-            int count = 0;
-            for (int i = 0; i < layoutLista->count(); i++) {
-                QLayoutItem *item = layoutLista->itemAt(i);
-                if (item && item->layout()) count++;
-            }
-            if (count >= max_KW) {
-                mostrarModal(dialogo, "Warning",
-                    QString("You cannot have more than %1 keywords defined at a time.").arg(max_KW));
-                return;
-            }
-
-            auto *fila = new QHBoxLayout();
-            auto *input = new QLineEdit();
-            input->setMaximumWidth(150);
-            auto *btnEliminar = new QPushButton("x");
-            btnEliminar->setFixedWidth(30);
-
-            QObject::connect(btnEliminar, &QPushButton::clicked, [=]() {
-                QLayoutItem *item;
-                while ((item = fila->takeAt(0)) != nullptr) {
-                    if (item->widget()) item->widget()->deleteLater();
-                    delete item;
-                }
-                layoutLista->removeItem(fila);
-                delete fila;
-            });
-
-            fila->addWidget(input);
-            fila->addWidget(btnEliminar);
-            layoutLista->addLayout(fila);
-        });
-
-        auto *botones = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-
-        QObject::connect(botones, &QDialogButtonBox::accepted, [=]() {
-            Keyword nuevasKeywords[max_KW] {};
-            int count = 0;
-
-            for (int i = 0; i < layoutLista->count() && count < max_KW; i++) {
-                QLayoutItem *item = layoutLista->itemAt(i);
-                if (!item) continue;
-                QLayout *filaLayout = item->layout();
-                if (!filaLayout) continue;
-                QLayoutItem *primerItem = filaLayout->itemAt(0);
-                if (!primerItem || !primerItem->widget()) continue;
-                QLineEdit *lineEdit = qobject_cast<QLineEdit *>(primerItem->widget());
-                if (!lineEdit) continue;
-                QString texto = lineEdit->text().trimmed();
-                if (texto.isEmpty()) continue;
-
-                QByteArray bytes = texto.toLocal8Bit();
-                strncpy(nuevasKeywords[count].identificador, bytes.constData(), med_KW - 1);
-                nuevasKeywords[count].identificador[med_KW - 1] = '\0';
-                count++;
-            }
-
-            if (count < max_KW) nuevasKeywords[count].identificador[0] = '\0';
-
-            actualizarArchivoDePalabrasClave(nuevasKeywords);
-            dialogo->accept();
-        });
-
-        QObject::connect(botones, &QDialogButtonBox::rejected, dialogo, &QDialog::reject);
-
-        auto *layoutBotonesKW = new QHBoxLayout();
-        layoutBotonesKW->addStretch();
-        layoutBotonesKW->addWidget(botones);
-        layoutBotonesKW->addStretch();
-
-        layoutDialogo->addWidget(scrollArea);
-        layoutDialogo->addWidget(btnAgregar);
-        layoutDialogo->addLayout(layoutBotonesKW);
-
-        dialogo->exec();
-    });
-
-    // Operators
-    auto *grupoOperadores = new QGroupBox("Operators");
-    auto *layoutOperadores = new QVBoxLayout();
-    auto *btnEditOperators = new QPushButton("Edit");
-    layoutOperadores->addWidget(btnEditOperators);
-    grupoOperadores->setLayout(layoutOperadores);
-
-    QObject::connect(btnEditOperators, &QPushButton::clicked, [=]() {
-        cargarListaDeOperadores();
-
-        QDialog *dialogo = new QDialog(ventana);
-        dialogo->setWindowTitle("Edit Operators");
-        dialogo->setFixedWidth(280);
-        dialogo->resize(280, 450);
-
-        auto *layoutDialogo = new QVBoxLayout(dialogo);
-
-        auto *scrollArea = new QScrollArea();
-        scrollArea->setWidgetResizable(true);
-        scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-        auto *contenedor = new QWidget();
-        auto *layoutLista = new QVBoxLayout(contenedor);
-        layoutLista->setAlignment(Qt::AlignTop);
-        scrollArea->setWidget(contenedor);
-
-        const int anchoOp  = 120;
-        const int anchoChk = 90;
-
-        // --- Encabezado ---
-        auto *filaEncabezado = new QHBoxLayout();
-
-        auto *layoutEncOp = new QHBoxLayout();
-        layoutEncOp->setContentsMargins(0, 0, 0, 0);
-        auto *lblNombre = new QLabel("Operator");
-        lblNombre->setAlignment(Qt::AlignCenter);
-        layoutEncOp->addStretch();
-        layoutEncOp->addWidget(lblNombre);
-        layoutEncOp->addStretch();
-        auto *wEncOp = new QWidget();
-        wEncOp->setFixedWidth(anchoOp);
-        wEncOp->setLayout(layoutEncOp);
-
-        auto *layoutEncSegment = new QHBoxLayout();
-        layoutEncSegment->setContentsMargins(0, 0, 0, 0);
-        auto *lblSegmentador = new QLabel("Segmenter");
-        lblSegmentador->setAlignment(Qt::AlignCenter);
-        auto *btnInfoSegment = new QPushButton("ℹ");
-        btnInfoSegment->setFixedWidth(18);
-        layoutEncSegment->addStretch();
-        layoutEncSegment->addWidget(lblSegmentador);
-        layoutEncSegment->addWidget(btnInfoSegment);
-        layoutEncSegment->addStretch();
-        auto *wEncSegment = new QWidget();
-        wEncSegment->setFixedWidth(anchoChk);
-        wEncSegment->setLayout(layoutEncSegment);
-
-        QObject::connect(btnInfoSegment, &QPushButton::clicked, [=]() {
-            mostrarModal(dialogo, "Information",
-                "When active, the operator is spaced between its operands in the output. "
-                "For example, if an operator is marked as a segmenter, it will appear surrounded "
-                "by spaces when printed, separating it visually from the values on each side.");
-        });
-
-        filaEncabezado->addWidget(wEncOp);
-        filaEncabezado->addWidget(wEncSegment);
-        layoutLista->addLayout(filaEncabezado);
-
-        auto *sep = new QFrame();
-        sep->setFrameShape(QFrame::HLine);
-        layoutLista->addWidget(sep);
-
-        // --- Filas de operadores (operador centrado respecto a su columna) ---
-        for (int i = 0; operators[i].identificador[0]; i++) {
-            auto *fila = new QHBoxLayout();
-            fila->setAlignment(Qt::AlignVCenter);
-
-            // Celda del operador: centrado horizontalmente con stretch
-            auto *layoutCeldaOp = new QHBoxLayout();
-            layoutCeldaOp->setContentsMargins(0, 0, 0, 0);
-            auto *lblOp = new QLabel(QString::fromLocal8Bit(operators[i].identificador));
-            lblOp->setAlignment(Qt::AlignCenter);
-            layoutCeldaOp->addStretch();
-            layoutCeldaOp->addWidget(lblOp);
-            layoutCeldaOp->addStretch();
-            auto *wCeldaOp = new QWidget();
-            wCeldaOp->setFixedWidth(anchoOp);
-            wCeldaOp->setLayout(layoutCeldaOp);
-
-            // Celda del checkbox segmentador
-            auto *layoutCeldaSegment = new QHBoxLayout();
-            layoutCeldaSegment->setContentsMargins(0, 0, 0, 0);
-            auto *chkSegmentador = new QCheckBox();
-            chkSegmentador->setChecked(operators[i].esSegmentador);
-            layoutCeldaSegment->addStretch();
-            layoutCeldaSegment->addWidget(chkSegmentador);
-            layoutCeldaSegment->addStretch();
-            auto *wCeldaSegment = new QWidget();
-            wCeldaSegment->setFixedWidth(anchoChk);
-            wCeldaSegment->setLayout(layoutCeldaSegment);
-
-            fila->addWidget(wCeldaOp);
-            fila->addWidget(wCeldaSegment);
-            layoutLista->addLayout(fila);
-        }
-
-        auto *botones = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-
-        QObject::connect(botones, &QDialogButtonBox::accepted, [=]() {
-            Operator operadoresActualizados[max_OP] {};
-            int count = 0;
-
-            for (int i = 2; i < layoutLista->count() && count < max_OP; i++) {
-                QLayoutItem *item = layoutLista->itemAt(i);
-                if (!item) continue;
-                QLayout *filaLayout = item->layout();
-                if (!filaLayout || filaLayout->count() < 2) continue;
-
-                QWidget *wOp = filaLayout->itemAt(0)->widget();
-                QWidget *wS  = filaLayout->itemAt(1)->widget();
-                if (!wOp || !wS) continue;
-                QLabel    *lbl  = wOp->findChild<QLabel *>();
-                QCheckBox *chkS = wS->findChild<QCheckBox *>();
-                if (!lbl || !chkS) continue;
-
-                QByteArray bytes = lbl->text().toLocal8Bit();
-                strncpy(operadoresActualizados[count].identificador, bytes.constData(), med_OP - 1);
-                operadoresActualizados[count].identificador[med_OP - 1] = '\0';
-                operadoresActualizados[count].esAcotable    = operators[count].esAcotable;
-                operadoresActualizados[count].esSegmentador = chkS->isChecked();
-                count++;
-            }
-
-            if (count < max_OP) operadoresActualizados[count].identificador[0] = '\0';
-
-            actualizarArchivoDeOperadores(operadoresActualizados);
-            dialogo->accept();
-        });
-
-        QObject::connect(botones, &QDialogButtonBox::rejected, dialogo, &QDialog::reject);
-
-        auto *layoutBotonesOP = new QHBoxLayout();
-        layoutBotonesOP->addStretch();
-        layoutBotonesOP->addWidget(botones);
-        layoutBotonesOP->addStretch();
-
-        layoutDialogo->addWidget(scrollArea);
-        layoutDialogo->addLayout(layoutBotonesOP);
-
-        dialogo->exec();
-    });
-
-    // =========================
-    // 🔸 FORMAT
-    // Patron controlador:    [ℹ]  Nombre  [checkbox]
-    // Patron subcontrolador: └  Nombre  [valor]
-    // =========================
-    auto *grupoFormato = new QGroupBox("Format");
-    auto *layoutFormato = new QVBoxLayout();
-
-    // --- Adjust to margin ---
-    auto *layoutMargen = new QHBoxLayout();
-    auto *btnInfoMargen = new QPushButton("ℹ");
-    btnInfoMargen->setFixedWidth(20);
-    auto *lblMargen = new QLabel("Adjust to margin");
-    auto *chkMargen = new QCheckBox();
-    layoutMargen->addWidget(btnInfoMargen);
-    layoutMargen->addWidget(lblMargen);
-    layoutMargen->addStretch();
-    layoutMargen->addWidget(chkMargen);
-
-    // Suboption: margin limit
-    auto *layoutSubMargen = new QHBoxLayout();
-    auto *lblArrowMargen = new QLabel("  └");
-    lblArrowMargen->setFixedWidth(22);
-    auto *lblMargenLimit = new QLabel("Margin limit");
-    auto *inputMargen = new QLineEdit();
-    inputMargen->setMaximumWidth(45);
-    layoutSubMargen->addWidget(lblArrowMargen);
-    layoutSubMargen->addWidget(lblMargenLimit);
-    layoutSubMargen->addStretch();
-    layoutSubMargen->addWidget(inputMargen);
-    lblArrowMargen->setVisible(false);
-    lblMargenLimit->setVisible(false);
-    inputMargen->setVisible(false);
-
-    QObject::connect(chkMargen, &QCheckBox::toggled, [=](bool checked) {
-        lblArrowMargen->setVisible(checked);
-        lblMargenLimit->setVisible(checked);
-        inputMargen->setVisible(checked);
-    });
-
-    QObject::connect(btnInfoMargen, &QPushButton::clicked, [=]() {
-        mostrarModal(ventana, "Information",
-            "When active, statements wrap to the next line upon reaching the defined margin, "
-            "aligning with the opening of the declaration. When inactive, statements continue "
-            "on the same line regardless of their length.\n\n"
-            "> Margin limit: maximum number of characters allowed per line before wrapping occurs.");
-    });
-
-    // --- Sort declarations ---
-    auto *layoutSort = new QHBoxLayout();
-    auto *btnInfoSort = new QPushButton("ℹ");
-    btnInfoSort->setFixedWidth(20);
-    auto *lblSort = new QLabel("Sort declarations");
-    auto *chkOrdenar = new QCheckBox();
-    layoutSort->addWidget(btnInfoSort);
-    layoutSort->addWidget(lblSort);
-    layoutSort->addStretch();
-    layoutSort->addWidget(chkOrdenar);
-
-    // Suboption: sort criteria → valor en QLineEdit no editable + botón "..."
-    auto *layoutSubSort = new QHBoxLayout();
-    auto *lblArrowSort = new QLabel("  └");
-    lblArrowSort->setFixedWidth(22);
-    auto *lblCriterios = new QLabel("Sort criteria");
-    auto *inputCriteriosValor = new QLineEdit("AAA");
-    inputCriteriosValor->setReadOnly(true);
-    inputCriteriosValor->setMaximumWidth(40);
-    inputCriteriosValor->setAlignment(Qt::AlignCenter);
-    auto *btnEditCriterios = new QPushButton("...");
-    btnEditCriterios->setFixedWidth(28);
-    layoutSubSort->addWidget(lblArrowSort);
-    layoutSubSort->addWidget(lblCriterios);
-    layoutSubSort->addStretch();
-    layoutSubSort->addWidget(inputCriteriosValor);
-    layoutSubSort->addWidget(btnEditCriterios);
-    lblArrowSort->setVisible(false);
-    lblCriterios->setVisible(false);
-    inputCriteriosValor->setVisible(false);
-    btnEditCriterios->setVisible(false);
-
-    QObject::connect(chkOrdenar, &QCheckBox::toggled, [=](bool checked) {
-        lblArrowSort->setVisible(checked);
-        lblCriterios->setVisible(checked);
-        inputCriteriosValor->setVisible(checked);
-        btnEditCriterios->setVisible(checked);
-    });
-
-    QObject::connect(btnInfoSort, &QPushButton::clicked, [=]() {
-        mostrarModal(ventana, "Information",
-            "When active, declarations are printed sorted according to the defined criteria. "
-            "When inactive, they are printed in the same order as in the source file.\n\n"
-            "> Sort criteria: three characters defining the sorting criterion for each axis. "
-            "The axes are evaluated in order: declaration type, keyword, and identifier. "
-            "Each axis is independent and can be configured separately.");
-    });
-
-    // Diálogo de edición de criterios de ordenamiento
-    QObject::connect(btnEditCriterios, &QPushButton::clicked, [=]() {
-        QDialog *diagCriterios = new QDialog(ventana);
-        diagCriterios->setWindowTitle("Sort Criteria");
-        diagCriterios->setFixedWidth(360);
-
-        auto *layoutDiag = new QVBoxLayout(diagCriterios);
-
-        // Un único grid para cabecera + separador + filas → columnas perfectamente alineadas
-        // Filas: 0=cabecera, 1=separador (span 4 cols), 2-4=ejes
-        auto *grid = new QGridLayout();
-        grid->setColumnStretch(0, 1);
-
-        // --- Fila 0: cabecera ---
-        auto *hdrSortBy = new QLabel("Sort by");
-        hdrSortBy->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        grid->addWidget(hdrSortBy, 0, 0);
-
-        // Columna A
-        auto *layoutHdrA = new QHBoxLayout();
-        auto *lblHdrA = new QLabel("A");
-        lblHdrA->setAlignment(Qt::AlignCenter);
-        auto *btnInfoA = new QPushButton("ℹ");
-        btnInfoA->setFixedWidth(18);
-        layoutHdrA->addStretch();
-        layoutHdrA->addWidget(lblHdrA);
-        layoutHdrA->addWidget(btnInfoA);
-        layoutHdrA->addStretch();
-        auto *wHdrA = new QWidget();
-        wHdrA->setLayout(layoutHdrA);
-        grid->addWidget(wHdrA, 0, 1);
-        QObject::connect(btnInfoA, &QPushButton::clicked, [=]() {
-            mostrarModal(diagCriterios, "Information",
-                "Ascending order. Declarations are sorted from the lowest to the highest value "
-                "on this axis, following alphabetical or type order depending on the axis.");
-        });
-
-        // Columna C
-        auto *layoutHdrC = new QHBoxLayout();
-        auto *lblHdrC = new QLabel("C");
-        lblHdrC->setAlignment(Qt::AlignCenter);
-        auto *btnInfoC = new QPushButton("ℹ");
-        btnInfoC->setFixedWidth(18);
-        layoutHdrC->addStretch();
-        layoutHdrC->addWidget(lblHdrC);
-        layoutHdrC->addWidget(btnInfoC);
-        layoutHdrC->addStretch();
-        auto *wHdrC = new QWidget();
-        wHdrC->setLayout(layoutHdrC);
-        grid->addWidget(wHdrC, 0, 2);
-        QObject::connect(btnInfoC, &QPushButton::clicked, [=]() {
-            mostrarModal(diagCriterios, "Information",
-                "Consecutive order. This axis is ignored and the evaluation moves on to the next one. "
-                "Declarations that share the same value on the previous axes maintain their relative "
-                "order from the source file.");
-        });
-
-        // Columna D
-        auto *layoutHdrD = new QHBoxLayout();
-        auto *lblHdrD = new QLabel("D");
-        lblHdrD->setAlignment(Qt::AlignCenter);
-        auto *btnInfoD = new QPushButton("ℹ");
-        btnInfoD->setFixedWidth(18);
-        layoutHdrD->addStretch();
-        layoutHdrD->addWidget(lblHdrD);
-        layoutHdrD->addWidget(btnInfoD);
-        layoutHdrD->addStretch();
-        auto *wHdrD = new QWidget();
-        wHdrD->setLayout(layoutHdrD);
-        grid->addWidget(wHdrD, 0, 3);
-        QObject::connect(btnInfoD, &QPushButton::clicked, [=]() {
-            mostrarModal(diagCriterios, "Information",
-                "Descending order. Declarations are sorted from the highest to the lowest value "
-                "on this axis, following reverse alphabetical or type order depending on the axis.");
-        });
-
-        // --- Fila 1: separador que ocupa todas las columnas ---
-        auto *sepGrid = new QFrame();
-        sepGrid->setFrameShape(QFrame::HLine);
-        grid->addWidget(sepGrid, 1, 0, 1, 4);
-
-        // --- Filas 2-4: ejes (Type, Keyword, Identifier) ---
-        const char *nombresEjes[3] = {"Type", "Keyword", "Identifier"};
-        QRadioButton *rbGroups[3][3];
-        QButtonGroup *btnGroups[3];
-        QString criterioActual = inputCriteriosValor->text();
-
-        for (int eje = 0; eje < 3; eje++) {
-            auto *lblEje = new QLabel(nombresEjes[eje]);
-            lblEje->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-            grid->addWidget(lblEje, eje + 2, 0);
-
-            btnGroups[eje] = new QButtonGroup(diagCriterios);
-
-            auto *rbA = new QRadioButton(); rbGroups[eje][0] = rbA;
-            auto *wCeldaA = new QWidget();
-            auto *lA = new QHBoxLayout(wCeldaA);
-            lA->setContentsMargins(0,0,0,0); lA->addStretch(); lA->addWidget(rbA); lA->addStretch();
-            grid->addWidget(wCeldaA, eje + 2, 1);
-
-            auto *rbC = new QRadioButton(); rbGroups[eje][1] = rbC;
-            auto *wCeldaC = new QWidget();
-            auto *lC = new QHBoxLayout(wCeldaC);
-            lC->setContentsMargins(0,0,0,0); lC->addStretch(); lC->addWidget(rbC); lC->addStretch();
-            grid->addWidget(wCeldaC, eje + 2, 2);
-
-            auto *rbD = new QRadioButton(); rbGroups[eje][2] = rbD;
-            auto *wCeldaD = new QWidget();
-            auto *lD = new QHBoxLayout(wCeldaD);
-            lD->setContentsMargins(0,0,0,0); lD->addStretch(); lD->addWidget(rbD); lD->addStretch();
-            grid->addWidget(wCeldaD, eje + 2, 3);
-
-            btnGroups[eje]->addButton(rbA, 0);
-            btnGroups[eje]->addButton(rbC, 1);
-            btnGroups[eje]->addButton(rbD, 2);
-
-            char valorEje = (eje < criterioActual.length()) ? criterioActual[eje].toLatin1() : 'A';
-            if      (valorEje == 'A') rbA->setChecked(true);
-            else if (valorEje == 'C') rbC->setChecked(true);
-            else if (valorEje == 'D') rbD->setChecked(true);
-            else                       rbA->setChecked(true);
-        }
-
-        layoutDiag->addLayout(grid);
-
-        // Botones Ok/Cancel centrados
-        auto *botones = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-        auto *layoutBotonesCrit = new QHBoxLayout();
-        layoutBotonesCrit->addStretch();
-        layoutBotonesCrit->addWidget(botones);
-        layoutBotonesCrit->addStretch();
-
-        QObject::connect(botones, &QDialogButtonBox::accepted, [=]() {
-            QString nuevoCriterio = "";
-            const char opciones[3] = {'A', 'C', 'D'};
-            for (int eje = 0; eje < 3; eje++) {
-                int sel = btnGroups[eje]->checkedId();
-                nuevoCriterio += (sel >= 0 && sel < 3) ? opciones[sel] : 'A';
-            }
-            inputCriteriosValor->setText(nuevoCriterio);
-            diagCriterios->accept();
-        });
-
-        QObject::connect(botones, &QDialogButtonBox::rejected, diagCriterios, &QDialog::reject);
-
-        layoutDiag->addLayout(layoutBotonesCrit);
-        diagCriterios->exec();
-    });
-
-    // --- Space subelements ---
-    auto *layoutEsp = new QHBoxLayout();
-    auto *btnInfoEsp = new QPushButton("ℹ");
-    btnInfoEsp->setFixedWidth(20);
-    auto *lblEsp = new QLabel("Space subelements");
-    auto *chkEspaciar = new QCheckBox();
-    layoutEsp->addWidget(btnInfoEsp);
-    layoutEsp->addWidget(lblEsp);
-    layoutEsp->addStretch();
-    layoutEsp->addWidget(chkEspaciar);
-
-    QObject::connect(btnInfoEsp, &QPushButton::clicked, [=]() {
-        mostrarModal(ventana, "Information",
-            "When active, a space is added after each separator between the subelements of a "
-            "declaration, except after the last one. This applies to function parameters and "
-            "grouped assignment elements.");
-    });
-
-    // --- Process assignments ---
-    auto *layoutAsig = new QHBoxLayout();
-    auto *btnInfoAsig = new QPushButton("ℹ");
-    btnInfoAsig->setFixedWidth(20);
-    auto *lblAsig = new QLabel("Process assignments");
-    auto *chkAsignaciones = new QCheckBox();
-    layoutAsig->addWidget(btnInfoAsig);
-    layoutAsig->addWidget(lblAsig);
-    layoutAsig->addStretch();
-    layoutAsig->addWidget(chkAsignaciones);
-
-    QObject::connect(btnInfoAsig, &QPushButton::clicked, [=]() {
-        mostrarModal(ventana, "Information",
-            "When active, global assignments from the source file are processed and included in "
-            "the output. When inactive, all assignments are ignored completely and will not appear "
-            "in the result.");
-    });
-
-    // --- Process functions ---
-    auto *layoutFunc = new QHBoxLayout();
-    auto *btnInfoFunc = new QPushButton("ℹ");
-    btnInfoFunc->setFixedWidth(20);
-    auto *lblFunc = new QLabel("Process functions");
-    auto *chkFunciones = new QCheckBox();
-    layoutFunc->addWidget(btnInfoFunc);
-    layoutFunc->addWidget(lblFunc);
-    layoutFunc->addStretch();
-    layoutFunc->addWidget(chkFunciones);
-
-    // Suboption: suppress variables
-    auto *layoutSubSuprimir = new QHBoxLayout();
-    auto *lblArrowSuprimir = new QLabel("  └");
-    lblArrowSuprimir->setFixedWidth(22);
-    auto *lblSuprimir = new QLabel("Suppress variables");
-    auto *chkSuprimir = new QCheckBox();
-    layoutSubSuprimir->addWidget(lblArrowSuprimir);
-    layoutSubSuprimir->addWidget(lblSuprimir);
-    layoutSubSuprimir->addStretch();
-    layoutSubSuprimir->addWidget(chkSuprimir);
-    lblArrowSuprimir->setVisible(false);
-    lblSuprimir->setVisible(false);
-    chkSuprimir->setVisible(false);
-
-    // Suboption: delimiter
-    auto *layoutSubDelim = new QHBoxLayout();
-    auto *lblArrowDelim = new QLabel("  └");
-    lblArrowDelim->setFixedWidth(22);
-    auto *lblDelimitador = new QLabel("Delimiter");
-    auto *comboDelimitador = new QComboBox();
-    comboDelimitador->addItems({";", "{"});
-    comboDelimitador->setMaximumWidth(70);
-    layoutSubDelim->addWidget(lblArrowDelim);
-    layoutSubDelim->addWidget(lblDelimitador);
-    layoutSubDelim->addStretch();
-    layoutSubDelim->addWidget(comboDelimitador);
-    lblArrowDelim->setVisible(false);
-    lblDelimitador->setVisible(false);
-    comboDelimitador->setVisible(false);
-
-    QObject::connect(chkFunciones, &QCheckBox::toggled, [=](bool checked) {
-        lblArrowSuprimir->setVisible(checked);
-        lblSuprimir->setVisible(checked);
-        chkSuprimir->setVisible(checked);
-        lblArrowDelim->setVisible(checked);
-        lblDelimitador->setVisible(checked);
-        comboDelimitador->setVisible(checked);
-    });
-
-    QObject::connect(btnInfoFunc, &QPushButton::clicked, [=]() {
-        mostrarModal(ventana, "Information",
-            "When active, functions from the source file are processed and included in the output. "
-            "When inactive, all functions are ignored completely.\n\n"
-            "> Suppress variables: when active, the parameter identifiers (variable names) are "
-            "omitted from the output, keeping only their types.\n\n"
-            "> Delimiter: symbol used to close each function in the output. "
-            "Use ';' for header files and '{' for source files.");
-    });
-
-    layoutFormato->addLayout(layoutMargen);
-    layoutFormato->addLayout(layoutSubMargen);
-    layoutFormato->addLayout(layoutSort);
-    layoutFormato->addLayout(layoutSubSort);
-    layoutFormato->addLayout(layoutEsp);
-    layoutFormato->addLayout(layoutAsig);
-    layoutFormato->addLayout(layoutFunc);
-    layoutFormato->addLayout(layoutSubSuprimir);
-    layoutFormato->addLayout(layoutSubDelim);
-
-    grupoFormato->setLayout(layoutFormato);
-
-    layoutIzquierdo->addWidget(grupoKeywords);
-    layoutIzquierdo->addWidget(grupoOperadores);
-    layoutIzquierdo->addWidget(grupoFormato);
-    layoutIzquierdo->addStretch();
-
-    // =========================
-    // 🔹 DERECHA
-    // =========================
-    auto *layoutDerecho = new QVBoxLayout();
-
-    // --- Input ---
-    auto *grupoInput = new QGroupBox("Input");
-    auto *layoutInput = new QVBoxLayout();
-    auto *textoEntrada = new QTextEdit();
-    auto *botonConvertir = new QPushButton("Convert");
-    layoutInput->addWidget(textoEntrada);
-    layoutInput->addWidget(botonConvertir);
-    grupoInput->setLayout(layoutInput);
-
-    {
-        ifstream src = abrirArchivo_IFS("../resources/Source.txt");
-        string contenido((istreambuf_iterator<char>(src)), istreambuf_iterator<char>());
-        textoEntrada->setText(QString::fromStdString(contenido));
-        src.close();
-    }
-
-    // --- Barra separadora ---
-    auto *contenedorBarra = new QWidget();
-    auto *layoutBarra = new QVBoxLayout(contenedorBarra);
-    layoutBarra->setContentsMargins(0, 0, 0, 0);
-    auto *barra = new QFrame();
-    barra->setFrameShape(QFrame::HLine);
-    barra->setFixedHeight(2);
-    layoutBarra->addStretch();
-    layoutBarra->addWidget(barra);
-    layoutBarra->addStretch();
-    contenedorBarra->setFixedHeight(30);
-
-    // --- Output ---
-    auto *grupoOutput = new QGroupBox("Output");
-    auto *layoutOutput = new QVBoxLayout();
-    auto *textoSalida = new QTextEdit();
-    textoSalida->setReadOnly(true);
-    auto *btnCopiar = new QPushButton("Copy");
-    layoutOutput->addWidget(textoSalida);
-    layoutOutput->addWidget(btnCopiar);
-    grupoOutput->setLayout(layoutOutput);
-
-    {
-        ifstream res = abrirArchivo_IFS("../resources/Conversion.txt");
-        string contenido((istreambuf_iterator<char>(res)), istreambuf_iterator<char>());
-        textoSalida->setText(QString::fromStdString(contenido));
-        res.close();
-    }
-
-    // =========================
-    // 🔹 CARGAR PF AL INICIO
-    // =========================
+    // Declaracion & Inicializacion de variables
+    FormatControls cf {};
+    QTextEdit *t_Entrada = nullptr, *t_Salida = nullptr;
+    QPushButton *b_Convertir = nullptr;
+    QWidget *v_Principal = new QWidget();
+    QHBoxLayout *ch_Principal = new QHBoxLayout();
+    // Configuracion de ventana principal
+    v_Principal->setWindowTitle("HeaderConverter");
+    v_Principal->resize(1000, 600);
+    // Construccion de lado izquierdo y lado derecho
+    ch_Principal->addWidget(crearLadoIzquierdo(v_Principal, cf));
+    ch_Principal->addLayout(crearLadoDerecho(t_Entrada, t_Salida, b_Convertir), 1);
+    v_Principal->setLayout(ch_Principal);
+    // Carga de estado inicial de controles y textos
+    cargarFormatoEnControles(cf);
+    cargarArchivoEnTexto("../resources/Source.txt", t_Entrada);
+    cargarArchivoEnTexto("../resources/Conversion.txt", t_Salida);
+    // Conexion de boton de conversion
+    conectarBotonDeConversion(b_Convertir, t_Entrada, t_Salida, cf);
+    // Muestra de ventana principal
+    v_Principal->show();
+}
+
+                      /* - / Funciones Secundarias / - */
+
+// Modulo de creacion de lado izquierdo [Palabras clave, operadores y formato]
+QWidget *crearLadoIzquierdo(QWidget *v_Principal, FormatControls &cf) {
+    // Declaracion & Inicializacion de variables
+    QWidget *w_LadoIzquierdo = new QWidget();
+    QVBoxLayout *cv_LadoIzquierdo = new QVBoxLayout();
+    // Insercion de grupos de controladores
+    cv_LadoIzquierdo->addWidget(crearGrupoDeEdicion(v_Principal, "Keywords", abrirPanelDeEdicionDePalabrasClave));
+    cv_LadoIzquierdo->addWidget(crearGrupoDeEdicion(v_Principal, "Operators", abrirPanelDeEdicionDeOperadores));
+    cv_LadoIzquierdo->addWidget(crearGrupoDeFormato(v_Principal, cf));
+    cv_LadoIzquierdo->addStretch();
+    // Configuracion de contenedor
+    w_LadoIzquierdo->setLayout(cv_LadoIzquierdo);
+    w_LadoIzquierdo->setMaximumWidth(320);
+    return w_LadoIzquierdo;
+}
+// Modulo de creacion de lado derecho [Entrada, separador y salida]
+QVBoxLayout *crearLadoDerecho(QTextEdit *&t_Entrada, QTextEdit *&t_Salida, QPushButton *&b_Convertir) {
+    // Declaracion & Inicializacion de variables
+    QVBoxLayout *cv_LadoDerecho = new QVBoxLayout();
+    // Insercion de paneles
+    cv_LadoDerecho->addWidget(crearPanelDeEntrada(t_Entrada, b_Convertir));
+    cv_LadoDerecho->addWidget(crearSeparadorDeSecciones());
+    cv_LadoDerecho->addWidget(crearPanelDeSalida(t_Salida));
+    return cv_LadoDerecho;
+}
+// Modulo de carga de formato de procesamiento en controles
+void cargarFormatoEnControles(const FormatControls &cf) {
+    // Carga de formato de procesamiento vigente
     cargarFormatoDeProcesamiento();
-
-    chkMargen->setChecked(pf.ajustarPorMargen);
-    inputMargen->setText(QString::number(pf.limitePorMargen));
-    lblArrowMargen->setVisible(pf.ajustarPorMargen);
-    lblMargenLimit->setVisible(pf.ajustarPorMargen);
-    inputMargen->setVisible(pf.ajustarPorMargen);
-
-    chkOrdenar->setChecked(pf.ordenarDeclaraciones);
-    inputCriteriosValor->setText(pf.criteriosDeOrdenamiento);
-    lblArrowSort->setVisible(pf.ordenarDeclaraciones);
-    lblCriterios->setVisible(pf.ordenarDeclaraciones);
-    inputCriteriosValor->setVisible(pf.ordenarDeclaraciones);
-    btnEditCriterios->setVisible(pf.ordenarDeclaraciones);
-
-    chkEspaciar->setChecked(pf.espaciarSubelementos);
-    chkAsignaciones->setChecked(pf.procesarAsignaciones);
-
-    chkFunciones->setChecked(pf.procesarFunciones);
-    chkSuprimir->setChecked(pf.suprimirVariables);
-    comboDelimitador->setCurrentText(QString(pf.simboloDelimitador));
-
-    lblArrowSuprimir->setVisible(pf.procesarFunciones);
-    lblSuprimir->setVisible(pf.procesarFunciones);
-    chkSuprimir->setVisible(pf.procesarFunciones);
-    lblArrowDelim->setVisible(pf.procesarFunciones);
-    lblDelimitador->setVisible(pf.procesarFunciones);
-    comboDelimitador->setVisible(pf.procesarFunciones);
-
-    // =========================
-    // 🔹 BOTÓN CONVERTIR
-    // =========================
-    QObject::connect(botonConvertir, &QPushButton::clicked, [=]() {
-
-        ofstream src = abrirArchivo_OFS("../resources/Source.txt");
-        src << textoEntrada->toPlainText().toStdString();
-        src.close();
-
-        ProcessingFormat nuevoPF;
-        nuevoPF.ajustarPorMargen      = chkMargen->isChecked();
-        nuevoPF.limitePorMargen       = inputMargen->text().toInt();
-        nuevoPF.ordenarDeclaraciones  = chkOrdenar->isChecked();
-        strcpy(nuevoPF.criteriosDeOrdenamiento, inputCriteriosValor->text().toStdString().c_str());
-        nuevoPF.espaciarSubelementos  = chkEspaciar->isChecked();
-        nuevoPF.procesarAsignaciones  = chkAsignaciones->isChecked();
-        nuevoPF.procesarFunciones     = chkFunciones->isChecked();
-        nuevoPF.suprimirVariables     = chkSuprimir->isChecked();
-        nuevoPF.simboloDelimitador    = comboDelimitador->currentText().toStdString()[0];
-
-        actualizarArchivoDeFormatoDeProcesamiento(nuevoPF);
-        cargarFormatoDeProcesamiento();
-        cargarListaDePalabrasClave();
-        cargarListaDeOperadores();
-
-        headerConversion();
-
-        textoSalida->clear();
-
-        ifstream res = abrirArchivo_IFS("../resources/Conversion.txt");
-        string contenido((istreambuf_iterator<char>(res)), istreambuf_iterator<char>());
-        textoSalida->setText(QString::fromStdString(contenido));
-        res.close();
+    // Asignacion de valores a controladores y subcontroladores
+    cf.c_AjustarPorMargen->setChecked(pf.ajustarPorMargen);
+    cf.i_LimitePorMargen->setText(QString::number(pf.limitePorMargen));
+    cf.c_OrdenarDeclaraciones->setChecked(pf.ordenarDeclaraciones);
+    cf.i_CriteriosDeOrdenamiento->setText(pf.criteriosDeOrdenamiento);
+    cf.c_EspaciarSubelementos->setChecked(pf.espaciarSubelementos);
+    cf.c_ProcesarAsignaciones->setChecked(pf.procesarAsignaciones);
+    cf.c_ProcesarFunciones->setChecked(pf.procesarFunciones);
+    cf.c_SuprimirVariables->setChecked(pf.suprimirVariables);
+    cf.s_SimboloDelimitador->setCurrentText(QString(pf.simboloDelimitador));
+}
+// Modulo de conexion de boton de conversion
+void conectarBotonDeConversion(QPushButton *b_Convertir, QTextEdit *t_Entrada, QTextEdit *t_Salida, const FormatControls &cf) {
+    QObject::connect(b_Convertir, &QPushButton::clicked, [=]() {
+        procesarConversion(t_Entrada, t_Salida, cf);
     });
+}
 
-    QObject::connect(btnCopiar, &QPushButton::clicked, [=]() {
-        QApplication::clipboard()->setText(textoSalida->toPlainText());
+                      /* - / Funciones Derivadas / - */
+
+// Modulo de creacion de grupo de edicion [Boton que abre un panel de edicion]
+QGroupBox *crearGrupoDeEdicion(QWidget *v_Principal, const char *titulo, void (*abrirPanel)(QWidget *)) {
+    // Declaracion & Inicializacion de variables
+    QGroupBox *g_Edicion = new QGroupBox(titulo);
+    QVBoxLayout *cv_Edicion = new QVBoxLayout();
+    QPushButton *b_Editar = new QPushButton("Edit");
+    // Configuracion de grupo
+    cv_Edicion->addWidget(b_Editar);
+    g_Edicion->setLayout(cv_Edicion);
+    // Conexion de boton de edicion
+    QObject::connect(b_Editar, &QPushButton::clicked, [=]() {
+        abrirPanel(v_Principal);
     });
+    return g_Edicion;
+}
+// Modulo de creacion de grupo de formato de procesamiento
+QGroupBox *crearGrupoDeFormato(QWidget *v_Principal, FormatControls &cf) {
+    // Declaracion & Inicializacion de variables
+    QGroupBox *g_Formato = new QGroupBox("Format");
+    QVBoxLayout *cv_Formato = new QVBoxLayout();
+    // Insercion de controladores de formato
+    agregarControladorDeMargen(v_Principal, cv_Formato, cf);
+    agregarControladorDeOrdenamiento(v_Principal, cv_Formato, cf);
+    agregarControladorDeEspaciado(v_Principal, cv_Formato, cf);
+    agregarControladorDeAsignaciones(v_Principal, cv_Formato, cf);
+    agregarControladorDeFunciones(v_Principal, cv_Formato, cf);
+    // Configuracion de grupo
+    g_Formato->setLayout(cv_Formato);
+    return g_Formato;
+}
+// Modulo de creacion de panel de entrada
+QGroupBox *crearPanelDeEntrada(QTextEdit *&t_Entrada, QPushButton *&b_Convertir) {
+    // Declaracion & Inicializacion de variables
+    QGroupBox *g_Entrada = new QGroupBox("Input");
+    QVBoxLayout *cv_Entrada = new QVBoxLayout();
+    t_Entrada = new QTextEdit();
+    b_Convertir = new QPushButton("Convert");
+    // Configuracion de panel
+    cv_Entrada->addWidget(t_Entrada);
+    cv_Entrada->addWidget(b_Convertir);
+    g_Entrada->setLayout(cv_Entrada);
+    return g_Entrada;
+}
+// Modulo de creacion de separador de secciones
+QWidget *crearSeparadorDeSecciones() {
+    // Declaracion & Inicializacion de variables
+    QWidget *w_Separador = new QWidget();
+    QVBoxLayout *cv_Separador = new QVBoxLayout(w_Separador);
+    QFrame *f_Barra = new QFrame();
+    // Configuracion de separador
+    cv_Separador->setContentsMargins(0, 0, 0, 0);
+    f_Barra->setFrameShape(QFrame::HLine);
+    f_Barra->setFixedHeight(2);
+    cv_Separador->addStretch();
+    cv_Separador->addWidget(f_Barra);
+    cv_Separador->addStretch();
+    w_Separador->setFixedHeight(30);
+    return w_Separador;
+}
+// Modulo de creacion de panel de salida
+QGroupBox *crearPanelDeSalida(QTextEdit *&t_Salida) {
+    // Declaracion & Inicializacion de variables
+    QGroupBox *g_Salida = new QGroupBox("Output");
+    QVBoxLayout *cv_Salida = new QVBoxLayout();
+    QPushButton *b_Copiar = new QPushButton("Copy");
+    t_Salida = new QTextEdit();
+    t_Salida->setReadOnly(true);
+    // Configuracion de panel
+    cv_Salida->addWidget(t_Salida);
+    cv_Salida->addWidget(b_Copiar);
+    g_Salida->setLayout(cv_Salida);
+    // Conexion de boton de copia
+    QObject::connect(b_Copiar, &QPushButton::clicked, [=]() {
+        QApplication::clipboard()->setText(t_Salida->toPlainText());
+    });
+    return g_Salida;
+}
+// Modulo de procesamiento de conversion [Boton 'Convert']
+void procesarConversion(QTextEdit *t_Entrada, QTextEdit *t_Salida, const FormatControls &cf) {
+    // Actualizacion de archivo fuente
+    ofstream archOrigen = abrirArchivo_OFS("../resources/Source.txt");
+    archOrigen<<t_Entrada->toPlainText().toStdString();
+    archOrigen.close();
+    // Actualizacion de archivo de formato de procesamiento
+    actualizarArchivoDeFormatoDeProcesamiento(leerFormatoDeControles(cf));
+    // Carga de configuraciones vigentes
+    cargarFormatoDeProcesamiento();
+    cargarListaDePalabrasClave();
+    cargarListaDeOperadores();
+    // Conversion de archivo
+    ConversionWarning aviso {};
+    bool convertido = headerConversion(aviso);
+    // Actualizacion de panel de salida
+    t_Salida->clear();
+    cargarArchivoEnTexto("../resources/Conversion.txt", t_Salida);
+    // Validacion de conversion cancelada
+    if (not convertido) {
+        if (aviso.id != 0) {
+            // Cancelacion por warning emitido
+            QString titulo, mensaje;
+            obtenerTextoDeWarning(aviso, titulo, mensaje);
+            abrirModal(t_Salida->window(), titulo, mensaje);
+        } else {
+            // Cancelacion por tiempo limite excedido
+            abrirModal(t_Salida->window(), "Error",
+                QString("The conversion exceeded the time limit of %1 seconds and was cancelled. "
+                        "Check the source code for unclosed brackets, quotes or comments, and try again.").arg(lim_CV));
+        }
+    }
+}
 
-    layoutDerecho->addWidget(grupoInput);
-    layoutDerecho->addWidget(contenedorBarra);
-    layoutDerecho->addWidget(grupoOutput);
+                        /* - / Funciones SubDerivadas / - */
 
-    auto *widgetIzquierdo = new QWidget();
-    widgetIzquierdo->setLayout(layoutIzquierdo);
-    widgetIzquierdo->setMaximumWidth(320);
+// Modulo de insercion de controlador de ajuste por margen
+void agregarControladorDeMargen(QWidget *v_Principal, QVBoxLayout *cv_Formato, FormatControls &cf) {
+    // Inicializacion de controlador y subcontrolador
+    cf.c_AjustarPorMargen = new QCheckBox();
+    cf.i_LimitePorMargen = new QLineEdit();
+    cf.i_LimitePorMargen->setMaximumWidth(45);
+    // Vinculacion de subcontrolador
+    QWidget *w_LimitePorMargen = crearFilaDeSubcontrolador("Margin limit", cf.i_LimitePorMargen, nullptr);
+    vincularSubcontrolador(cf.c_AjustarPorMargen, w_LimitePorMargen);
+    // Insercion de filas
+    cv_Formato->addLayout(crearFilaDeControlador(v_Principal, "Adjust to margin",
+        "When active, statements wrap to the next line upon reaching the defined margin, "
+        "aligning with the opening of the declaration. When inactive, statements continue "
+        "on the same line regardless of their length.\n\n"
+        "> Margin limit: maximum number of characters allowed per line before wrapping occurs.",
+        cf.c_AjustarPorMargen));
+    cv_Formato->addWidget(w_LimitePorMargen);
+}
+// Modulo de insercion de controlador de ordenamiento de declaraciones
+void agregarControladorDeOrdenamiento(QWidget *v_Principal, QVBoxLayout *cv_Formato, FormatControls &cf) {
+    // Inicializacion de controlador y subcontrolador
+    cf.c_OrdenarDeclaraciones = new QCheckBox();
+    cf.i_CriteriosDeOrdenamiento = new QLineEdit("AAA");
+    cf.i_CriteriosDeOrdenamiento->setReadOnly(true);
+    cf.i_CriteriosDeOrdenamiento->setMaximumWidth(40);
+    cf.i_CriteriosDeOrdenamiento->setAlignment(Qt::AlignCenter);
+    QPushButton *b_EditarCriterios = new QPushButton("...");
+    b_EditarCriterios->setFixedWidth(28);
+    // Conexion de boton de edicion de criterios
+    QLineEdit *i_Criterios = cf.i_CriteriosDeOrdenamiento;
+    QObject::connect(b_EditarCriterios, &QPushButton::clicked, [=]() {
+        abrirPanelDeEdicionDeCriterios(v_Principal, i_Criterios);
+    });
+    // Vinculacion de subcontrolador
+    QWidget *w_Criterios = crearFilaDeSubcontrolador("Sort criteria", i_Criterios, b_EditarCriterios);
+    vincularSubcontrolador(cf.c_OrdenarDeclaraciones, w_Criterios);
+    // Insercion de filas
+    cv_Formato->addLayout(crearFilaDeControlador(v_Principal, "Sort declarations",
+        "When active, declarations are printed sorted according to the defined criteria. "
+        "When inactive, they are printed in the same order as in the source file.\n\n"
+        "> Sort criteria: three characters defining the sorting criterion for each axis. "
+        "The axes are evaluated in order: declaration type, keyword, and identifier. "
+        "Each axis is independent and can be configured separately.",
+        cf.c_OrdenarDeclaraciones));
+    cv_Formato->addWidget(w_Criterios);
+}
+// Modulo de insercion de controlador de espaciado de subelementos
+void agregarControladorDeEspaciado(QWidget *v_Principal, QVBoxLayout *cv_Formato, FormatControls &cf) {
+    // Inicializacion de controlador
+    cf.c_EspaciarSubelementos = new QCheckBox();
+    // Insercion de fila
+    cv_Formato->addLayout(crearFilaDeControlador(v_Principal, "Space subelements",
+        "When active, a space is added after each separator between the subelements of a "
+        "declaration, except after the last one. This applies to function parameters and "
+        "grouped assignment elements.",
+        cf.c_EspaciarSubelementos));
+}
+// Modulo de insercion de controlador de procesamiento de asignaciones
+void agregarControladorDeAsignaciones(QWidget *v_Principal, QVBoxLayout *cv_Formato, FormatControls &cf) {
+    // Inicializacion de controlador
+    cf.c_ProcesarAsignaciones = new QCheckBox();
+    // Insercion de fila
+    cv_Formato->addLayout(crearFilaDeControlador(v_Principal, "Process assignments",
+        "When active, global assignments from the source file are processed and included in "
+        "the output. When inactive, all assignments are ignored completely and will not appear "
+        "in the result.",
+        cf.c_ProcesarAsignaciones));
+}
+// Modulo de insercion de controlador de procesamiento de funciones
+void agregarControladorDeFunciones(QWidget *v_Principal, QVBoxLayout *cv_Formato, FormatControls &cf) {
+    // Inicializacion de controlador y subcontroladores
+    cf.c_ProcesarFunciones = new QCheckBox();
+    cf.c_SuprimirVariables = new QCheckBox();
+    cf.s_SimboloDelimitador = new QComboBox();
+    cf.s_SimboloDelimitador->addItems({";", "{"});
+    cf.s_SimboloDelimitador->setMaximumWidth(70);
+    // Vinculacion de subcontroladores
+    QWidget *w_SuprimirVariables = crearFilaDeSubcontrolador("Suppress variables", cf.c_SuprimirVariables, nullptr);
+    QWidget *w_SimboloDelimitador = crearFilaDeSubcontrolador("Delimiter", cf.s_SimboloDelimitador, nullptr);
+    vincularSubcontrolador(cf.c_ProcesarFunciones, w_SuprimirVariables);
+    vincularSubcontrolador(cf.c_ProcesarFunciones, w_SimboloDelimitador);
+    // Insercion de filas
+    cv_Formato->addLayout(crearFilaDeControlador(v_Principal, "Process functions",
+        "When active, functions from the source file are processed and included in the output. "
+        "When inactive, all functions are ignored completely.\n\n"
+        "> Suppress variables: when active, the parameter identifiers (variable names) are "
+        "omitted from the output, keeping only their types.\n\n"
+        "> Delimiter: symbol used to close each function in the output. "
+        "Use ';' for header files and '{' for source files.",
+        cf.c_ProcesarFunciones));
+    cv_Formato->addWidget(w_SuprimirVariables);
+    cv_Formato->addWidget(w_SimboloDelimitador);
+}
+// Modulo de apertura de panel de edicion de palabras clave
+void abrirPanelDeEdicionDePalabrasClave(QWidget *v_Principal) {
+    // Carga de lista de palabras clave vigente
+    cargarListaDePalabrasClave();
+    // Declaracion & Inicializacion de variables
+    QVBoxLayout *cv_Lista = nullptr;
+    QDialog *p_PalabrasClave = new QDialog(v_Principal);
+    QVBoxLayout *cv_PalabrasClave = new QVBoxLayout(p_PalabrasClave);
+    QScrollArea *d_PalabrasClave = crearAreaDeLista(cv_Lista);
+    QPushButton *b_Agregar = new QPushButton("+ Add keyword");
+    // Configuracion de panel
+    p_PalabrasClave->setWindowTitle("Edit Keywords");
+    p_PalabrasClave->setFixedWidth(220);
+    p_PalabrasClave->resize(220, 450);
+    // Carga de palabras clave en lista
+    for (int i = 0; keywords[i].identificador[0]; i++) agregarFilaDePalabraClave(cv_Lista, keywords[i].identificador, true);
+    // Conexion de boton de agregar
+    QObject::connect(b_Agregar, &QPushButton::clicked, [=]() {
+        // Validacion de limite de palabras clave
+        if (contarFilasDeLista(cv_Lista) >= max_KW) {
+            abrirModal(p_PalabrasClave, "Warning",
+                QString("You cannot have more than %1 keywords defined at a time.").arg(max_KW));
+            return;
+        }
+        agregarFilaDePalabraClave(cv_Lista, "", false);
+    });
+    // Insercion de lista y boton de agregar
+    cv_PalabrasClave->addWidget(d_PalabrasClave);
+    cv_PalabrasClave->addWidget(b_Agregar);
+    // Conexion de botones de confirmacion
+    QDialogButtonBox *bb_Confirmacion = agregarBotonesDeConfirmacion(p_PalabrasClave, cv_PalabrasClave);
+    QObject::connect(bb_Confirmacion, &QDialogButtonBox::accepted, [=]() {
+        Keyword nuevasKeywords[max_KW] {};
+        leerPalabrasClaveDeLista(cv_Lista, nuevasKeywords);
+        actualizarArchivoDePalabrasClave(nuevasKeywords);
+        p_PalabrasClave->accept();
+    });
+    // Ejecucion de panel
+    p_PalabrasClave->exec();
+}
+// Modulo de apertura de panel de edicion de operadores
+void abrirPanelDeEdicionDeOperadores(QWidget *v_Principal) {
+    // Carga de lista de operadores vigente
+    cargarListaDeOperadores();
+    // Declaracion & Inicializacion de variables
+    QVBoxLayout *cv_Lista = nullptr;
+    QDialog *p_Operadores = new QDialog(v_Principal);
+    QVBoxLayout *cv_Operadores = new QVBoxLayout(p_Operadores);
+    QScrollArea *d_Operadores = crearAreaDeLista(cv_Lista);
+    // Configuracion de panel
+    p_Operadores->setWindowTitle("Edit Operators");
+    p_Operadores->setFixedWidth(280);
+    p_Operadores->resize(280, 450);
+    d_Operadores->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    // Carga de cabecera y operadores en lista
+    agregarCabeceraDeOperadores(p_Operadores, cv_Lista);
+    for (int i = 0; operators[i].identificador[0]; i++) agregarFilaDeOperador(cv_Lista, operators[i]);
+    // Insercion de lista
+    cv_Operadores->addWidget(d_Operadores);
+    // Conexion de botones de confirmacion
+    QDialogButtonBox *bb_Confirmacion = agregarBotonesDeConfirmacion(p_Operadores, cv_Operadores);
+    QObject::connect(bb_Confirmacion, &QDialogButtonBox::accepted, [=]() {
+        Operator operadoresActualizados[max_OP] {};
+        leerOperadoresDeLista(cv_Lista, operadoresActualizados);
+        actualizarArchivoDeOperadores(operadoresActualizados);
+        p_Operadores->accept();
+    });
+    // Ejecucion de panel
+    p_Operadores->exec();
+}
+// Modulo de apertura de panel de edicion de criterios de ordenamiento
+void abrirPanelDeEdicionDeCriterios(QWidget *v_Principal, QLineEdit *i_Criterios) {
+    // Declaracion & Inicializacion de variables
+    const char *nombresEjes[3] = {"Type", "Keyword", "Identifier"};
+    QString criterioActual = i_Criterios->text();
+    QButtonGroup *gb_Ejes[3];
+    QDialog *p_Criterios = new QDialog(v_Principal);
+    QVBoxLayout *cv_Criterios = new QVBoxLayout(p_Criterios);
+    QGridLayout *cg_Criterios = new QGridLayout();
+    // Configuracion de panel
+    p_Criterios->setWindowTitle("Sort Criteria");
+    p_Criterios->setFixedWidth(360);
+    cg_Criterios->setColumnStretch(0, 1);
+    // Carga de cabecera y ejes en cuadricula
+    agregarCabeceraDeCriterios(p_Criterios, cg_Criterios);
+    for (int eje = 0; eje < 3; eje++) {
+        char valorEje = (eje < criterioActual.length()) ? criterioActual[eje].toLatin1() : 'A';
+        gb_Ejes[eje] = agregarEjeDeCriterios(p_Criterios, cg_Criterios, eje, nombresEjes[eje], valorEje);
+    }
+    // Insercion de cuadricula
+    cv_Criterios->addLayout(cg_Criterios);
+    // Conexion de botones de confirmacion
+    QDialogButtonBox *bb_Confirmacion = agregarBotonesDeConfirmacion(p_Criterios, cv_Criterios);
+    QObject::connect(bb_Confirmacion, &QDialogButtonBox::accepted, [=]() {
+        QString nuevoCriterio = "";
+        for (int eje = 0; eje < 3; eje++) {
+            int sel = gb_Ejes[eje]->checkedId();
+            nuevoCriterio += (sel >= 0 and sel < 3) ? opcionesDeOrdenamiento[sel] : 'A';
+        }
+        i_Criterios->setText(nuevoCriterio);
+        p_Criterios->accept();
+    });
+    // Ejecucion de panel
+    p_Criterios->exec();
+}
+// Modulo de lectura de formato de procesamiento desde controles
+ProcessingFormat leerFormatoDeControles(const FormatControls &cf) {
+    // Declaracion & Inicializacion de variables
+    ProcessingFormat nuevoPF {};
+    // Lectura de controladores y subcontroladores
+    nuevoPF.ajustarPorMargen = cf.c_AjustarPorMargen->isChecked();
+    nuevoPF.limitePorMargen = cf.i_LimitePorMargen->text().toInt();
+    nuevoPF.ordenarDeclaraciones = cf.c_OrdenarDeclaraciones->isChecked();
+    strcpy(nuevoPF.criteriosDeOrdenamiento, cf.i_CriteriosDeOrdenamiento->text().toStdString().c_str());
+    nuevoPF.espaciarSubelementos = cf.c_EspaciarSubelementos->isChecked();
+    nuevoPF.procesarAsignaciones = cf.c_ProcesarAsignaciones->isChecked();
+    nuevoPF.procesarFunciones = cf.c_ProcesarFunciones->isChecked();
+    nuevoPF.suprimirVariables = cf.c_SuprimirVariables->isChecked();
+    nuevoPF.simboloDelimitador = cf.s_SimboloDelimitador->currentText().toStdString()[0];
+    return nuevoPF;
+}
+// Modulo de insercion de fila de palabra clave en lista
+void agregarFilaDePalabraClave(QVBoxLayout *cv_Lista, const char *palabraClave, bool soloLectura) {
+    // Declaracion & Inicializacion de variables
+    QHBoxLayout *ch_Fila = new QHBoxLayout();
+    QLineEdit *i_PalabraClave = new QLineEdit(QString::fromLocal8Bit(palabraClave));
+    QPushButton *b_Eliminar = new QPushButton("x");
+    // Configuracion de fila
+    i_PalabraClave->setReadOnly(soloLectura);
+    i_PalabraClave->setMaximumWidth(150);
+    b_Eliminar->setFixedWidth(30);
+    QObject::connect(b_Eliminar, &QPushButton::clicked, [=]() {
+        eliminarFilaDeLista(cv_Lista, ch_Fila);
+    });
+    ch_Fila->addWidget(i_PalabraClave);
+    ch_Fila->addWidget(b_Eliminar);
+    cv_Lista->addLayout(ch_Fila);
+}
+// Modulo de lectura de palabras clave desde lista
+void leerPalabrasClaveDeLista(QVBoxLayout *cv_Lista, Keyword *palabrasClave) {
+    // Declaracion & Inicializacion de variables
+    int cantKw = 0;
+    // Lectura de palabras clave por fila
+    for (int i = 0; i < cv_Lista->count() and cantKw < max_KW; i++) {
+        QLayoutItem *pItem = cv_Lista->itemAt(i);
+        if (not pItem) continue;
+        QLayout *ch_Fila = pItem->layout();
+        if (not ch_Fila) continue;
+        QLayoutItem *pPrimero = ch_Fila->itemAt(0);
+        if (not pPrimero or not pPrimero->widget()) continue;
+        QLineEdit *i_PalabraClave = qobject_cast<QLineEdit *>(pPrimero->widget());
+        if (not i_PalabraClave) continue;
+        QString texto = i_PalabraClave->text().trimmed();
+        if (texto.isEmpty()) continue;
+        QByteArray bytes = texto.toLocal8Bit();
+        strncpy(palabrasClave[cantKw].identificador, bytes.constData(), med_KW - 1);
+        palabrasClave[cantKw].identificador[med_KW - 1] = '\0';
+        cantKw++;
+    }
+    // Validacion de delimitacion de lista
+    if (cantKw < max_KW) palabrasClave[cantKw].identificador[0] = '\0';
+}
+// Modulo de insercion de cabecera de lista de operadores
+void agregarCabeceraDeOperadores(QDialog *p_Operadores, QVBoxLayout *cv_Lista) {
+    // Declaracion & Inicializacion de variables
+    QHBoxLayout *ch_Cabecera = new QHBoxLayout();
+    QLabel *e_Operador = new QLabel("Operator");
+    QLabel *e_Segmentador = new QLabel("Segmenter");
+    QFrame *f_Separador = new QFrame();
+    QPushButton *b_Informacion = crearBotonDeInformacion(p_Operadores,
+        "When active, the operator is spaced between its operands in the output. "
+        "For example, if an operator is marked as a segmenter, it will appear surrounded "
+        "by spaces when printed, separating it visually from the values on each side.", 18);
+    // Configuracion de cabecera
+    e_Operador->setAlignment(Qt::AlignCenter);
+    e_Segmentador->setAlignment(Qt::AlignCenter);
+    f_Separador->setFrameShape(QFrame::HLine);
+    ch_Cabecera->addWidget(crearCeldaCentrada(e_Operador, nullptr, anc_OP, false));
+    ch_Cabecera->addWidget(crearCeldaCentrada(e_Segmentador, b_Informacion, anc_SG, false));
+    // Insercion de cabecera y separador
+    cv_Lista->addLayout(ch_Cabecera);
+    cv_Lista->addWidget(f_Separador);
+}
+// Modulo de insercion de fila de operador en lista
+void agregarFilaDeOperador(QVBoxLayout *cv_Lista, const Operator &operador) {
+    // Declaracion & Inicializacion de variables
+    QHBoxLayout *ch_Fila = new QHBoxLayout();
+    QLabel *e_Operador = new QLabel(QString::fromLocal8Bit(operador.identificador));
+    QCheckBox *c_Segmentador = new QCheckBox();
+    // Configuracion de fila
+    ch_Fila->setAlignment(Qt::AlignVCenter);
+    e_Operador->setAlignment(Qt::AlignCenter);
+    c_Segmentador->setChecked(operador.esSegmentador);
+    ch_Fila->addWidget(crearCeldaCentrada(e_Operador, nullptr, anc_OP, false));
+    ch_Fila->addWidget(crearCeldaCentrada(c_Segmentador, nullptr, anc_SG, false));
+    cv_Lista->addLayout(ch_Fila);
+}
+// Modulo de lectura de operadores desde lista
+void leerOperadoresDeLista(QVBoxLayout *cv_Lista, Operator *operadoresActualizados) {
+    // Declaracion & Inicializacion de variables
+    int cantOp = 0;
+    // Lectura de operadores por fila [Se omiten la cabecera y el separador]
+    for (int i = 2; i < cv_Lista->count() and cantOp < max_OP; i++) {
+        QLayoutItem *pItem = cv_Lista->itemAt(i);
+        if (not pItem) continue;
+        QLayout *ch_Fila = pItem->layout();
+        if (not ch_Fila or ch_Fila->count() < 2) continue;
+        QWidget *w_Operador = ch_Fila->itemAt(0)->widget();
+        QWidget *w_Segmentador = ch_Fila->itemAt(1)->widget();
+        if (not w_Operador or not w_Segmentador) continue;
+        QLabel *e_Operador = w_Operador->findChild<QLabel *>();
+        QCheckBox *c_Segmentador = w_Segmentador->findChild<QCheckBox *>();
+        if (not e_Operador or not c_Segmentador) continue;
+        QByteArray bytes = e_Operador->text().toLocal8Bit();
+        strncpy(operadoresActualizados[cantOp].identificador, bytes.constData(), med_OP - 1);
+        operadoresActualizados[cantOp].identificador[med_OP - 1] = '\0';
+        operadoresActualizados[cantOp].esAcotable = operators[cantOp].esAcotable;
+        operadoresActualizados[cantOp].esSegmentador = c_Segmentador->isChecked();
+        cantOp++;
+    }
+    // Validacion de delimitacion de lista
+    if (cantOp < max_OP) operadoresActualizados[cantOp].identificador[0] = '\0';
+}
+// Modulo de insercion de cabecera de cuadricula de criterios [Fila 0: titulos, fila 1: separador]
+void agregarCabeceraDeCriterios(QDialog *p_Criterios, QGridLayout *cg_Criterios) {
+    // Declaracion & Inicializacion de variables
+    const char *informacion[3] = {
+        "Ascending order. Declarations are sorted from the lowest to the highest value "
+        "on this axis, following alphabetical or type order depending on the axis.",
+        "Consecutive order. This axis is ignored and the evaluation moves on to the next one. "
+        "Declarations that share the same value on the previous axes maintain their relative "
+        "order from the source file.",
+        "Descending order. Declarations are sorted from the highest to the lowest value "
+        "on this axis, following reverse alphabetical or type order depending on the axis."
+    };
+    QLabel *e_OrdenarPor = new QLabel("Sort by");
+    QFrame *f_Separador = new QFrame();
+    // Insercion de titulo de ejes
+    e_OrdenarPor->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    cg_Criterios->addWidget(e_OrdenarPor, 0, 0);
+    // Insercion de titulos de opciones
+    for (int i = 0; i < 3; i++) {
+        QLabel *e_Opcion = new QLabel(QString(QChar::fromLatin1(opcionesDeOrdenamiento[i])));
+        e_Opcion->setAlignment(Qt::AlignCenter);
+        QPushButton *b_Informacion = crearBotonDeInformacion(p_Criterios, informacion[i], 18);
+        cg_Criterios->addWidget(crearCeldaCentrada(e_Opcion, b_Informacion, 0, true), 0, i + 1);
+    }
+    // Insercion de separador que ocupa todas las columnas
+    f_Separador->setFrameShape(QFrame::HLine);
+    cg_Criterios->addWidget(f_Separador, 1, 0, 1, 4);
+}
+// Modulo de insercion de eje de criterios en cuadricula [Filas 2-4: Type, Keyword, Identifier]
+QButtonGroup *agregarEjeDeCriterios(QDialog *p_Criterios, QGridLayout *cg_Criterios, int eje, const char *nombre, char valorEje) {
+    // Declaracion & Inicializacion de variables
+    QButtonGroup *gb_Eje = new QButtonGroup(p_Criterios);
+    QLabel *e_Eje = new QLabel(nombre);
+    // Validacion de valor de eje
+    if (valorEje != 'C' and valorEje != 'D') valorEje = 'A';
+    // Insercion de nombre de eje
+    e_Eje->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    cg_Criterios->addWidget(e_Eje, eje + 2, 0);
+    // Insercion de opciones de eje
+    for (int i = 0; i < 3; i++) {
+        QRadioButton *r_Opcion = new QRadioButton();
+        gb_Eje->addButton(r_Opcion, i);
+        cg_Criterios->addWidget(crearCeldaCentrada(r_Opcion, nullptr, 0, false), eje + 2, i + 1);
+        if (valorEje == opcionesDeOrdenamiento[i]) r_Opcion->setChecked(true);
+    }
+    return gb_Eje;
+}
 
-    layoutPrincipal->addWidget(widgetIzquierdo);
-    layoutPrincipal->addLayout(layoutDerecho, 1);
+                       /* - / Funciones Auxiliares / - */
 
-    ventana->setLayout(layoutPrincipal);
-    ventana->show();
+// Modulo de creacion de boton de informacion [Abre un modal con el mensaje]
+QPushButton *crearBotonDeInformacion(QWidget *v_Padre, const QString &mensaje, int ancho) {
+    QPushButton *b_Informacion = new QPushButton("ℹ");
+    b_Informacion->setFixedWidth(ancho);
+    QObject::connect(b_Informacion, &QPushButton::clicked, [=]() {
+        abrirModal(v_Padre, "Information", mensaje);
+    });
+    return b_Informacion;
+}
+// Modulo de creacion de celda centrada [Contenido y adicional opcional, con ancho fijo opcional]
+QWidget *crearCeldaCentrada(QWidget *w_Contenido, QWidget *w_Adicional, int ancho, bool conMargenes) {
+    QWidget *w_Celda = new QWidget();
+    QHBoxLayout *ch_Celda = new QHBoxLayout(w_Celda);
+    if (not conMargenes) ch_Celda->setContentsMargins(0, 0, 0, 0);
+    ch_Celda->addStretch();
+    ch_Celda->addWidget(w_Contenido);
+    if (w_Adicional != nullptr) ch_Celda->addWidget(w_Adicional);
+    ch_Celda->addStretch();
+    if (ancho > 0) w_Celda->setFixedWidth(ancho);
+    return w_Celda;
+}
+// Modulo de creacion de fila de controlador [Informacion, nombre y casilla]
+QHBoxLayout *crearFilaDeControlador(QWidget *v_Padre, const char *nombre, const QString &informacion, QCheckBox *c_Controlador) {
+    QHBoxLayout *ch_Controlador = new QHBoxLayout();
+    ch_Controlador->addWidget(crearBotonDeInformacion(v_Padre, informacion, 20));
+    ch_Controlador->addWidget(new QLabel(nombre));
+    ch_Controlador->addStretch();
+    ch_Controlador->addWidget(c_Controlador);
+    return ch_Controlador;
+}
+// Modulo de creacion de fila de subcontrolador [Flecha, nombre y hasta dos controles]
+QWidget *crearFilaDeSubcontrolador(const char *nombre, QWidget *w_Control, QWidget *w_Adicional) {
+    QWidget *w_Subcontrolador = new QWidget();
+    QHBoxLayout *ch_Subcontrolador = new QHBoxLayout(w_Subcontrolador);
+    QLabel *e_Flecha = new QLabel("  └");
+    e_Flecha->setFixedWidth(22);
+    ch_Subcontrolador->setContentsMargins(0, 0, 0, 0);
+    ch_Subcontrolador->addWidget(e_Flecha);
+    ch_Subcontrolador->addWidget(new QLabel(nombre));
+    ch_Subcontrolador->addStretch();
+    ch_Subcontrolador->addWidget(w_Control);
+    if (w_Adicional != nullptr) ch_Subcontrolador->addWidget(w_Adicional);
+    return w_Subcontrolador;
+}
+// Modulo de vinculacion de visibilidad de subcontrolador a su controlador
+void vincularSubcontrolador(QCheckBox *c_Controlador, QWidget *w_Subcontrolador) {
+    w_Subcontrolador->setVisible(c_Controlador->isChecked());
+    QObject::connect(c_Controlador, &QCheckBox::toggled, w_Subcontrolador, &QWidget::setVisible);
+}
+// Modulo de creacion de area desplazable de lista
+QScrollArea *crearAreaDeLista(QVBoxLayout *&cv_Lista) {
+    QScrollArea *d_Lista = new QScrollArea();
+    QWidget *w_Contenedor = new QWidget();
+    d_Lista->setWidgetResizable(true);
+    cv_Lista = new QVBoxLayout(w_Contenedor);
+    cv_Lista->setAlignment(Qt::AlignTop);
+    d_Lista->setWidget(w_Contenedor);
+    return d_Lista;
+}
+// Modulo de insercion de botones de confirmacion [Ok / Cancel] en panel
+QDialogButtonBox *agregarBotonesDeConfirmacion(QDialog *p_Panel, QVBoxLayout *cv_Panel) {
+    QDialogButtonBox *bb_Confirmacion = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    QHBoxLayout *ch_Confirmacion = new QHBoxLayout();
+    ch_Confirmacion->addStretch();
+    ch_Confirmacion->addWidget(bb_Confirmacion);
+    ch_Confirmacion->addStretch();
+    cv_Panel->addLayout(ch_Confirmacion);
+    QObject::connect(bb_Confirmacion, &QDialogButtonBox::rejected, p_Panel, &QDialog::reject);
+    return bb_Confirmacion;
+}
+// Modulo de eliminacion de fila de lista
+void eliminarFilaDeLista(QVBoxLayout *cv_Lista, QHBoxLayout *ch_Fila) {
+    QLayoutItem *pItem;
+    while ((pItem = ch_Fila->takeAt(0)) != nullptr) {
+        if (pItem->widget()) pItem->widget()->deleteLater();
+        delete pItem;
+    }
+    cv_Lista->removeItem(ch_Fila);
+    delete ch_Fila;
+}
+// Modulo de conteo de filas de lista
+int contarFilasDeLista(QVBoxLayout *cv_Lista) {
+    int cantFilas = 0;
+    for (int i = 0; i < cv_Lista->count(); i++) {
+        QLayoutItem *pItem = cv_Lista->itemAt(i);
+        if (pItem and pItem->layout()) cantFilas++;
+    }
+    return cantFilas;
+}
+// Modulo de carga de archivo en cuadro de texto
+void cargarArchivoEnTexto(const char *nombArch, QTextEdit *t_Texto) {
+    ifstream archEntrada = abrirArchivo_IFS(nombArch);
+    string contenido((istreambuf_iterator<char>(archEntrada)), istreambuf_iterator<char>());
+    t_Texto->setText(QString::fromStdString(contenido));
+    archEntrada.close();
+}
+// Modulo de apertura de modal informativo
+void abrirModal(QWidget *vPadre, const QString &titulo, const QString &mensaje) {
+    //
+    QDialog *vModal = new QDialog(vPadre);
+    vModal->setWindowTitle(titulo);
+    vModal->setFixedWidth(320);
+    //
+    QVBoxLayout *cvModal = new QVBoxLayout(vModal);
+    cvModal->setSpacing(16);
+    cvModal->setContentsMargins(16, 16, 16, 16);
+    //
+    QLabel *eMensaje = new QLabel(mensaje);
+    eMensaje->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    eMensaje->setWordWrap(true);
+    eMensaje->setTextFormat(Qt::PlainText);
+    cvModal->addWidget(eMensaje);
+    //
+    QPushButton *bAceptar = new QPushButton("OK");
+    bAceptar->setFixedWidth(80);
+    QHBoxLayout *chAceptar = new QHBoxLayout();
+    chAceptar->addStretch();
+    chAceptar->addWidget(bAceptar);
+    chAceptar->addStretch();
+    cvModal->addLayout(chAceptar);
+    QObject::connect(bAceptar, &QPushButton::clicked, vModal, &QDialog::accept);
+    //
+    vModal->exec();
+}
+// Modulo de obtencion de titulo y mensaje de warning segun su tipo [A, E, L, O, P, U]
+void obtenerTextoDeWarning(const ConversionWarning &aviso, QString &titulo, QString &mensaje) {
+    QString razon = QString::fromLocal8Bit(aviso.razon);
+    switch (aviso.id) {
+        case 'A':   // A -> Archive Aperture
+            titulo = "ERROR DE APERTURA";
+            mensaje = QString("No se encontro el archivo '%1' en el directorio.\n\n"
+                "[#] Acciones recomendadas:\n"
+                "[A] Verificar la ruta del archivo.\n"
+                "[B] Verificar el nombre del archivo ingresado.\n"
+                "[C] Verificar si se agrego la extension del archivo.").arg(razon);
+            break;
+        case 'E':   // E -> Empty
+            titulo = "SIN RESULTADOS";
+            mensaje = "No existe error como tal.\n"
+                "Esto solo significa que no hay nada para convertir.\n\n"
+                "[#] Acciones recomendadas:\n"
+                "[A] Activar alguno de los controladores de muestra.\n"
+                "[B] Editar el archivo fuente.";
+            break;
+        case 'L':   // L -> Limit
+            titulo = "SIN AJUSTE A LIMITE";
+            mensaje = QString("No existe error como tal.\n"
+                "No obstante, fue imposible acomodar algunas declaraciones respecto al margen "
+                "de pagina ['%1']. Por ello, se ignoro el ajuste hacia margen en estas declaraciones.\n"
+                "Primera Ubicacion: %2\n\n"
+                "[#] Acciones recomendadas:\n"
+                "[A] Incrementar el limite de margen.\n"
+                "[B] Editar el archivo fuente.\n"
+                "[C] Desactivar el controlador de ajuste a margen.").arg(pf.limitePorMargen).arg(razon);
+            break;
+        case 'O':   // O -> Order
+            titulo = "ERROR POR ORDENAMIENTO";
+            mensaje = QString("El tipo de ordenamiento '%1' definido en el controlador es invalido.\n\n"
+                "[#] Acciones recomendadas:\n"
+                "[A] Modificar el valor del controlador de tipo de ordenamiento a alguno de los "
+                "tipos predefinidos:\n"
+                "    ['A'] Ascendente | ['C'] Consecuente | ['D'] Descendente\n"
+                "    Recordar que la secuencia debe ser de unicamente '3' caracteres, y que la "
+                "posicion de cada criterio de ordenamiento es:\n"
+                "        {Tipo de Declaration}{KeyWords}{Identificadores}\n"
+                "    Por ejemplo, con la secuencia 'ADA' el ordenamiento seria:\n"
+                "    - Ascendente por Tipo de Declaration\n"
+                "    - Descendente por Keyword\n"
+                "    - Ascendente por Identificador").arg(razon);
+            break;
+        case 'P':   // P -> Partition
+            titulo = "ERROR POR PARTICION";
+            mensaje = QString("Se ha detectado la particion de un identificador.\n"
+                "Ubicacion: %1\n\n"
+                "[#] Acciones recomendadas:\n"
+                "[A] Agregar una palabra clave faltante en el diccionario respectivo.\n"
+                "[B] Editar el archivo fuente.").arg(razon);
+            break;
+        case 'U':   // U -> Unreachable
+            titulo = "ESTADO INALCANZABLE";
+            mensaje = QString("El programa llego a un punto al que no deberia haber llegado. "
+                "No es un problema de tu codigo fuente, sino del propio programa.\n"
+                "Detalle: %1").arg(razon);
+            break;
+        default:
+            titulo = "Error";
+            mensaje = QString("Se emitio un warning desconocido ['%1'].").arg(QChar::fromLatin1(aviso.id));
+    }
 }

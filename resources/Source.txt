@@ -1,4 +1,3 @@
-
 /*/
  * Projecto:            HeaderConverter
  * Nombre del Archivo:  converter.cpp
@@ -9,8 +8,12 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <chrono>
 using namespace std;
 #include "converter.h"
+
+// Declaracion de variables globales
+static chrono::steady_clock::time_point limiteDeConversion;     // Instante limite de la conversion en curso.
 
                       /* - / Funciones Principales / - */
 
@@ -184,33 +187,45 @@ void cargarFormatoDeProcesamiento() {
     // Cierre de archivo de entrada
     archEntrada.close();
 }
-// Modulo de conversion de archivo
-void headerConversion() {
+// Modulo de conversion de archivo [Retorna 'false' si se cancela por superar el tiempo limite]
+bool headerConversion() {
     // Apertura de archivos de entrada y salida
     ifstream archOrigen = abrirArchivo_IFS("../resources/Source.txt");
     ofstream archDestino = abrirArchivo_OFS("../resources/Conversion.txt");
+    // Declaracion & Inicializacion de variables
+    bool convertido = true;
+    // Inicio de temporizador de conversion
+    iniciarTemporizadorDeConversion();
     // Proceso de conversion de archivo
-    while(true){
-        // Inicializacion de variables base para declaracion
-        char palabraClave[med_KW]{}, identificador[med_ID]{}, tipo = 0;
-        // Busqueda y almacenamiento de proxima palabra clave
-        almacenarProximaPalabraClave(archOrigen, palabraClave);
-        // Validacion de fin de archivo
-        if(archOrigen.eof()) break;
-        // Procesamiento de proximos identificadores para declaracion
-        procesarProximosIdentificadores(archOrigen, palabraClave, identificador, tipo);
-        // Inicializacion de nueva declaracion
-        Declaration declaracion {obtenerDinamicoExacto(palabraClave), obtenerDinamicoExacto(identificador), tipo};
-        // Procesamiento de subelementos de declaracion
-        procesarSubElementosDeDeclaracion(archOrigen, declaracion);
+    try {
+        while(true){
+            // Validacion de tiempo limite de conversion
+            validarTiempoDeConversion();
+            // Inicializacion de variables base para declaracion
+            char palabraClave[med_KW]{}, identificador[med_ID]{}, tipo = 0;
+            // Busqueda y almacenamiento de proxima palabra clave
+            almacenarProximaPalabraClave(archOrigen, palabraClave);
+            // Validacion de fin de archivo
+            if(archOrigen.eof()) break;
+            // Procesamiento de proximos identificadores para declaracion
+            procesarProximosIdentificadores(archOrigen, palabraClave, identificador, tipo);
+            // Inicializacion de nueva declaracion
+            Declaration declaracion {obtenerDinamicoExacto(palabraClave), obtenerDinamicoExacto(identificador), tipo};
+            // Procesamiento de subelementos de declaracion
+            procesarSubElementosDeDeclaracion(archOrigen, declaracion);
+        }
+        // Impresion de lista de declaraciones
+        imprimirListaDeDeclaraciones(archDestino);
+    } catch(ConversionTimeout &) {
+        // Cancelacion de conversion por tiempo limite excedido
+        convertido = false;
     }
-    // Impresion de lista de declaraciones
-    imprimirListaDeDeclaraciones(archDestino);
     // Limpieza de lista de declaraciones
     limpiarListaDeDeclaraciones();
     // Cierre de archivos de entrada y salida
     archOrigen.close();
     archDestino.close();
+    return convertido;
 }
 
                       /* - / Funciones Secundarias / - */
@@ -222,6 +237,8 @@ void almacenarProximaPalabraClave(ifstream &archOrigen, char *palabraClave){
     int posExacta = -1;
     // Proceso de busqueda y almacenamiento
     for (int i = 0; true; i++){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         bool haySimilares = false;
         char letra = archOrigen.get();
         // Validacion de fin de archivo
@@ -260,6 +277,8 @@ void procesarProximosIdentificadores(ifstream &archOrigen, char *palabraClave, c
     char cadAux[med_ID]{};
     // Procesamiento de identificadores
     for(int posCad = 0; true; posCad++){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         char letra = archOrigen.get();
         cadAux[posCad] = 0;
         // Validacion de descarte especial
@@ -341,6 +360,8 @@ void procesarSubElementosDeDeclaracion(ifstream &archOrigen, Declaration &declar
 void almacenarParametrosDeFuncion(ifstream &archOrigen, Function &funcion){
     // Almacenamiento de parametros de funcion
     for(int pm = 0; true; pm++){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         // Inicializacion de nuevo parametro
         Parameter parametro {};
         parametro.palabraClave = new char[med_ID] {};
@@ -368,6 +389,8 @@ void almacenarOperandosDeAsignacion(ifstream &archOrigen, Assignment &asignacion
     else archOrigen.unget();
     // Almacenamiento de operandos de asignacion
     for(int op = 0; true; op++){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         // Inicializacion de nuevo operando
         Operand operando {};
         operando.identificador = new char[med_ID] {};
@@ -392,6 +415,8 @@ void procesarProximosIdentificadores(ifstream &archOrigen, const Parameter &para
     char cadAux[med_ID]{};
     // Procesamiento de identificadores
     for(int posCad = 0; true; posCad++){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         char letra = archOrigen.get();
         cadAux[posCad] = 0;
         // Validacion de descarte especial
@@ -453,6 +478,8 @@ void procesarProximosIdentificadores(ifstream &archOrigen, const Operand &operan
     char anteriorDeOp = 0, proximoDeOp = 0;
     // Procesamiento de identificadores
     while(true){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         char letra = archOrigen.get();
         bool haySimilares = false;
         bool huboDescarte = hayDescarteEspecial(archOrigen,letra);
@@ -547,7 +574,7 @@ bool esElemento(char simbolo, int j, const char **conjunto){
 bool hayDescarteEspecial(ifstream &archOrigen, char letra){
     if(esElemento(letra, espaciadores)) { archOrigen>>ws; }
     else if (hayDescarteDeComentario(archOrigen, letra)) { }
-    else if(letra == '#') { while(archOrigen.get() != '\n') { } }
+    else if(letra == '#') { while(archOrigen.get() != '\n') validarTiempoDeConversion(); }
     else return false;
     return true;
 }
@@ -555,7 +582,7 @@ bool hayDescarteEspecial(ifstream &archOrigen, char letra){
 bool hayDescarteDeComentario(ifstream &archOrigen, char letra){
     if(letra == '/'){
         letra = archOrigen.get();
-        if (letra == '/') { while (archOrigen.get() != '\n') { } }
+        if (letra == '/') { while (archOrigen.get() != '\n') validarTiempoDeConversion(); }
         else if (letra == '*') {
             while (true) {
                 while (archOrigen.get() != '*' and not archOrigen.eof()) {}
@@ -605,6 +632,8 @@ void descartarProximosDatosDeDeclaracion(ifstream &archOrigen, char tipo){
 void descartarHastaDelimitador(ifstream &archOrigen, char delimitador){
     char letra = 0;
     while (true) {
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         letra = archOrigen.get();
         if (letra == delimitador or (esElemento(letra, separadores) and !esElemento(delimitador, 1, agrupadores))) break;
         if ((delimitador != 39 and delimitador != '"') and (esElemento(letra, 0, agrupadores) and letra != archOrigen.get())){
@@ -620,6 +649,8 @@ void almacenarHastaDelimitador(ifstream &archOrigen, char *cadena, char delimita
     int medContenido = 0;
     char letra = 0;
     while (true){
+        // Validacion de tiempo limite de conversion
+        validarTiempoDeConversion();
         letra = archOrigen.get();
         if(not hayDescarteDeComentario(archOrigen, letra)){
             if (letra != '\n'){
@@ -742,6 +773,14 @@ void darWarning(char warningID,const char *reason = ""){
     }
     */
     exit(1);
+}
+// Modulo de inicio de temporizador de conversion
+void iniciarTemporizadorDeConversion(){
+    limiteDeConversion = chrono::steady_clock::now() + chrono::seconds(lim_CV);
+}
+// Modulo de validacion de tiempo limite de conversion [Lanza 'ConversionTimeout' si se excede]
+void validarTiempoDeConversion(){
+    if(chrono::steady_clock::now() > limiteDeConversion) throw ConversionTimeout {};
 }
 // Modulo de limpieza de lista de declaraciones
 void limpiarListaDeDeclaraciones() {
